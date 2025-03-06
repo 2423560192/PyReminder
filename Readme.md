@@ -64,7 +64,7 @@ python pyreminder.py --autostart
 
 
 - **主界面**：
-- 
+
 ![img.png](img.png)
 - **提醒弹窗**：
 
