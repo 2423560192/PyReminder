@@ -65,10 +65,10 @@ python pyreminder.py --autostart
 
 - **主界面**：
 
-![img.png](img.png)
+![img.png](screenshots/img.png)
 - **提醒弹窗**：
 
-![img_1.png](img_1.png)
+![img_1.png](screenshots/img_1.png)
 ## 未来改进
 - 添加声音提醒
 - 支持提醒任务保存到本地文件
