@@ -1,15 +1,33 @@
+import json
 import tkinter as tk
 from tkinter import messagebox, ttk
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 import threading
 import sys
 import os
-
+from pystray import Icon, Menu, MenuItem
+import PIL.Image
 from tkcalendar import DateEntry
 
 
 class ReminderApp:
+
+    def save_reminders(self):
+        with open("reminders.json", "w") as f:
+            json.dump([{"content": r["content"], "time": r["time"].isoformat(), 'repeat': r['repeat']} for r in
+                       self.reminders], f)
+
+    def load_reminders(self):
+        try:
+            with open("reminders.json", "r") as f:
+                self.reminders = [{"content": r["content"], "time": r["time"].isoformat(), 'repeat': r['repeat']} for r
+                                  in
+                                  json.load(f)]
+            self.update_listbox()
+        except Exception as e:
+            pass
+
     def __init__(self, root, autostart=False):
         self.root = root
         self.root.title("提醒小助手")
@@ -52,6 +70,10 @@ class ReminderApp:
                                    values=[f"{i:02d}" for i in range(60)], width=5)
         minute_menu.pack(side=tk.LEFT, padx=5)
 
+        # 是否每天重复
+        self.repeat_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(root, text="重复每天", variable=self.repeat_var).pack(pady=5)
+
         # 添加按钮
         self.add_button = tk.Button(root, text="添加提醒", command=self.add_reminder)
         self.add_button.pack(pady=10)
@@ -73,11 +95,13 @@ class ReminderApp:
         if autostart:
             self.create_tray_icon()
 
-    # 其他方法保持不变
+        # 导入之前的数据
+        self.load_reminders()
+
+    # 创建系统托盘
     def create_tray_icon(self):
         try:
-            from pystray import Icon, Menu, MenuItem
-            import PIL.Image
+
             image = PIL.Image.new('RGB', (64, 64), color=(0, 128, 255))
             menu = Menu(
                 MenuItem('显示', self.show_window),
@@ -107,13 +131,14 @@ class ReminderApp:
             if reminder_time < datetime.now():
                 messagebox.showwarning("警告", "不能添加过去的时间！")
                 return
-            reminder = {"content": content, "time": reminder_time}
+            reminder = {"content": content, "time": reminder_time, "repeat": self.repeat_var.get()}
             self.reminders.append(reminder)
             self.update_listbox()
             self.content_entry.delete(0, tk.END)
             self.date_entry.set_date(datetime.now())
             self.hour_var.set("00")
             self.minute_var.set("00")
+            self.repeat_var.set(False)  # 重置为未选中
         except ValueError:
             messagebox.showerror("错误", "时间格式错误！")
 
@@ -121,7 +146,8 @@ class ReminderApp:
         self.listbox.delete(0, tk.END)
         for reminder in self.reminders:
             time_str = reminder["time"].strftime("%Y-%m-%d %H:%M")
-            self.listbox.insert(tk.END, f"{time_str} - {reminder['content']}")
+            self.listbox.insert(tk.END,
+                                f"{time_str} - {reminder['content']} - {'每天重复' if reminder['repeat'] == True else '单次'} ")
 
     def delete_reminder(self):
         try:
@@ -137,15 +163,22 @@ class ReminderApp:
             for i, reminder in enumerate(self.reminders[:]):
                 if current_time >= reminder["time"]:
                     self.root.after(0, lambda: messagebox.showinfo("提醒", f"时间到！\n{reminder['content']}"))
-                    self.reminders.pop(i)
+                    if reminder["repeat"]:
+                        reminder["time"] += timedelta(days=1)  # 推迟一天
+                    else:
+                        self.reminders.pop(i)
                     self.root.after(0, self.update_listbox)
             time.sleep(60)
 
     def on_closing(self):
-        self.running = False
-        if hasattr(self, 'tray_icon'):
-            self.tray_icon.stop()
-        self.root.destroy()
+        self.save_reminders()
+        if self.autostart:
+            self.root.withdraw()  # 后台模式隐藏
+        else:
+            self.running = False
+            if hasattr(self, 'tray_icon'):
+                self.tray_icon.stop()
+            self.root.destroy()
 
 
 def main():
@@ -156,5 +189,5 @@ def main():
     root.mainloop()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
