@@ -15,18 +15,26 @@ class ReminderApp:
 
     def save_reminders(self):
         with open("reminders.json", "w") as f:
-            json.dump([{"content": r["content"], "time": r["time"].isoformat(), 'repeat': r['repeat']} for r in
+            json.dump([{"content": r["content"], "time": r["time"].isoformat(), "repeat": r["repeat"]} for r in
                        self.reminders], f)
 
     def load_reminders(self):
         try:
             with open("reminders.json", "r") as f:
-                self.reminders = [{"content": r["content"], "time": r["time"].isoformat(), 'repeat': r['repeat']} for r
-                                  in
-                                  json.load(f)]
+                loaded = json.load(f)
+                self.reminders = []
+                for r in loaded:
+                    reminder = {
+                        "content": r["content"],
+                        "time": datetime.fromisoformat(r["time"]),  # 转换为 datetime
+                        "repeat": r["repeat"]
+                    }
+                    self.reminders.append(reminder)
             self.update_listbox()
+        except FileNotFoundError:
+            pass  # 文件不存在时忽略
         except Exception as e:
-            pass
+            print(f"加载提醒时出错: {e}")
 
     def __init__(self, root, autostart=False):
         self.root = root
@@ -86,6 +94,9 @@ class ReminderApp:
         self.delete_button = tk.Button(root, text="删除选中提醒", command=self.delete_reminder)
         self.delete_button.pack(pady=5)
 
+        # 导入之前的数据
+        self.load_reminders()
+
         # 线程和托盘
         self.running = True
         self.check_thread = threading.Thread(target=self.check_reminders)
@@ -95,8 +106,7 @@ class ReminderApp:
         if autostart:
             self.create_tray_icon()
 
-        # 导入之前的数据
-        self.load_reminders()
+
 
     # 创建系统托盘
     def create_tray_icon(self):
