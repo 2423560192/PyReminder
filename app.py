@@ -18,6 +18,9 @@ load_dotenv()
 app = Flask(__name__, template_folder='app/templates', static_folder='app/static')
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'default_secret_key')
 
+# 记录程序启动时间
+STARTUP_TIME = datetime.datetime.now()
+
 # 配置时区
 TIMEZONE = os.getenv('TIMEZONE', 'Asia/Shanghai')  # 默认使用中国时区
 try:
@@ -71,46 +74,77 @@ except Exception as e:
 TASK_ID_KEY = "task:id_counter"
 # 任务列表键名
 TASKS_KEY = "tasks"
-# token配置文件路径
+# token配置键名
+TOKENS_KEY = "tokens"
+# 本地文件路径（仅作为备用）
 TOKENS_FILE = 'tokens.yaml'
 
 # 加载息知token配置
 def load_tokens():
+    tokens_dict = {}
+    default_token = os.getenv('NOTIFICATION_TOKEN', 'XZ77c1d923959433459ec3a08556a6a5b6')
+    
     try:
-        # 检查tokens.yaml文件是否存在
+        # 首先尝试从Redis加载
+        if r:
+            redis_tokens = r.hgetall(TOKENS_KEY)
+            if redis_tokens:
+                print(f"从Redis加载了{len(redis_tokens)}个通知账号")
+                return redis_tokens
+        
+        # 如果Redis中没有数据，尝试从文件加载
         if os.path.exists(TOKENS_FILE):
             with open(TOKENS_FILE, 'r', encoding='utf-8') as file:
                 config = yaml.safe_load(file)
-                return config.get('tokens', {})
-        else:
-            # 在生产环境中，可能没有tokens.yaml文件
-            # 尝试从环境变量加载
-            token = os.getenv('NOTIFICATION_TOKEN')
-            if token:
-                return {"默认": token}
-            else:
-                return {"默认": "XZ77c1d923959433459ec3a08556a6a5b6"}
+                tokens_dict = config.get('tokens', {})
+                
+                # 如果从文件加载成功，保存到Redis
+                if r and tokens_dict:
+                    for name, token in tokens_dict.items():
+                        r.hset(TOKENS_KEY, name, token)
+                    print(f"已将{len(tokens_dict)}个通知账号从文件同步到Redis")
+                    
+                return tokens_dict
     except Exception as e:
         print(f"加载token配置失败: {str(e)}")
-        return {"默认": os.getenv('NOTIFICATION_TOKEN', 'XZ77c1d923959433459ec3a08556a6a5b6')}
+    
+    # 默认token
+    tokens_dict = {"默认": default_token}
+    
+    # 保存默认token到Redis
+    if r:
+        r.hset(TOKENS_KEY, "默认", default_token)
+        
+    return tokens_dict
 
 # 保存息知token配置
 def save_tokens(tokens_dict):
     try:
-        config = {'tokens': tokens_dict}
         # 确保包含默认令牌
-        if '默认' not in config['tokens']:
-            config['tokens']['默认'] = os.getenv('NOTIFICATION_TOKEN', 'XZ77c1d923959433459ec3a08556a6a5b6')
+        if '默认' not in tokens_dict:
+            tokens_dict['默认'] = os.getenv('NOTIFICATION_TOKEN', 'XZ77c1d923959433459ec3a08556a6a5b6')
         
-        # 创建目录（如果不存在）
-        os.makedirs(os.path.dirname(TOKENS_FILE), exist_ok=True)
+        # 优先保存到Redis
+        if r:
+            # 先清除旧数据
+            r.delete(TOKENS_KEY)
+            # 添加新数据
+            for name, token in tokens_dict.items():
+                r.hset(TOKENS_KEY, name, token)
+            print(f"已成功保存{len(tokens_dict)}个通知账号到Redis")
+            return True
         
-        # 保存到yaml文件
-        with open(TOKENS_FILE, 'w', encoding='utf-8') as file:
-            yaml.dump(config, file, allow_unicode=True)
-        
-        print(f"已保存{len(tokens_dict)}个token到{TOKENS_FILE}")
-        return True
+        # 如果Redis不可用，尝试保存到文件（可能在Render上失败）
+        try:
+            config = {'tokens': tokens_dict}
+            with open(TOKENS_FILE, 'w', encoding='utf-8') as file:
+                yaml.dump(config, file, allow_unicode=True)
+            print(f"已保存{len(tokens_dict)}个token到{TOKENS_FILE}")
+            return True
+        except Exception as e:
+            print(f"保存token到文件失败（在Render上这是正常现象）: {str(e)}")
+            return False if not r else True  # 如果Redis正常工作，仍然返回成功
+            
     except Exception as e:
         print(f"保存token配置失败: {str(e)}")
         return False
@@ -289,11 +323,41 @@ def check_tasks():
 check_thread = threading.Thread(target=check_tasks, daemon=True)
 check_thread.start()
 
+@app.route('/system_info')
+def system_info():
+    """系统信息页面，显示时区和数据库连接状态"""
+    now = get_now()
+    
+    # 计算系统运行时间
+    uptime = datetime.datetime.now() - STARTUP_TIME
+    hours, remainder = divmod(uptime.total_seconds(), 3600)
+    minutes, seconds = divmod(remainder, 60)
+    uptime_str = f"{int(hours)}小时{int(minutes)}分钟{int(seconds)}秒"
+    
+    # 获取内存任务数量
+    memory_tasks_count = len(tasks) if not r else 0
+    
+    system_data = {
+        "current_time": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "startup_time": STARTUP_TIME.strftime("%Y-%m-%d %H:%M:%S"),
+        "uptime": uptime_str,
+        "timezone": TIMEZONE,
+        "redis_connected": r is not None,
+        "redis_host": redis_host if r else "未连接",
+        "redis_port": redis_port if r else "未连接",
+        "redis_ssl": "已启用" if redis_ssl else "未启用",
+        "total_tasks": len(get_all_tasks() if r else tasks),
+        "memory_tasks": memory_tasks_count,
+        "total_tokens": len(tokens),
+        "python_version": os.popen('python --version').read().strip(),
+    }
+    return render_template('system_info.html', system_data=system_data)
+
 @app.route('/')
 def index():
     # 获取所有任务
     all_tasks = get_all_tasks() if r else tasks
-    return render_template('index.html', tasks=all_tasks, tokens=tokens)
+    return render_template('index.html', tasks=all_tasks, tokens=tokens, redis_connected=r is not None)
 
 @app.route('/add_task', methods=['POST'])
 def add_task():
@@ -374,7 +438,13 @@ def get_tasks():
 @app.route('/manage')
 def manage_tokens():
     """息知API令牌管理页面"""
-    return render_template('manage_tokens.html', tokens=tokens)
+    # 重新从数据源加载最新tokens
+    global tokens
+    if r:
+        # 从Redis重新获取最新数据
+        tokens = r.hgetall(TOKENS_KEY) or tokens
+    
+    return render_template('manage_tokens.html', tokens=tokens, redis_connected=r is not None)
 
 @app.route('/add_token', methods=['POST'])
 def add_token():
@@ -398,14 +468,24 @@ def add_token():
     is_new = token_name not in tokens
     tokens[token_name] = token_value
     
-    # 保存到文件
+    # 直接保存到Redis（如果可用）
+    if r:
+        # 直接设置，无需经过save_tokens函数
+        r.hset(TOKENS_KEY, token_name, token_value)
+        if is_new:
+            flash(f"已添加新通知账号「{token_name}」", "success")
+        else:
+            flash(f"已更新通知账号「{token_name}」的令牌", "success")
+        return redirect(url_for('manage_tokens'))
+    
+    # 如果Redis不可用，尝试通过save_tokens保存
     if save_tokens(tokens):
         if is_new:
             flash(f"已添加新通知账号「{token_name}」", "success")
         else:
             flash(f"已更新通知账号「{token_name}」的令牌", "success")
     else:
-        flash(f"保存账号失败，请检查文件权限", "danger")
+        flash(f"保存账号失败，请检查数据库连接", "danger")
     
     return redirect(url_for('manage_tokens'))
 
@@ -423,11 +503,17 @@ def delete_token(token_name):
     if token_name in tokens:
         del tokens[token_name]
         
-        # 保存到文件
+        # 如果Redis可用，直接从Redis删除
+        if r:
+            r.hdel(TOKENS_KEY, token_name)
+            flash(f"已删除通知账号「{token_name}」", "success")
+            return redirect(url_for('manage_tokens'))
+        
+        # 否则尝试通过save_tokens保存
         if save_tokens(tokens):
             flash(f"已删除通知账号「{token_name}」", "success")
         else:
-            flash(f"删除账号失败，请检查文件权限", "danger")
+            flash(f"删除账号失败，请检查数据库连接", "danger")
     else:
         flash(f"通知账号「{token_name}」不存在", "warning")
     

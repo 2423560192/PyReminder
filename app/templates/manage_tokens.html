@@ -89,6 +89,15 @@
                                 {% else %}
                                     <p class="text-center text-muted">暂无配置的通知账号，请添加一个新账号！</p>
                                 {% endif %}
+                                
+                                <div class="alert alert-info mt-3">
+                                    <strong>存储说明：</strong> 通知账号信息将安全存储在Redis数据库中，确保应用重启后不会丢失。
+                                    {% if redis_connected %}
+                                        <span class="badge bg-success">Redis已连接</span>
+                                    {% else %}
+                                        <span class="badge bg-warning text-dark">Redis未连接，数据可能无法持久化</span>
+                                    {% endif %}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -102,8 +111,8 @@
                         <p>息知（Xi Zhi）是一个简单易用的消息推送服务，可以通过API将消息推送到手机。</p>
                         <ol>
                             <li>访问<a href="https://xz.qqoq.net/" target="_blank">息知官网</a>并登录</li>
-                            <li>在"我的"页面获取您的令牌（Token）</li>
-                            <li>将令牌填入上方表单添加到系统中</li>
+                            <li>点击左侧边单点推送</li>
+                            <li>将XZ开头的token复制填写进来</li>
                             <li>在添加提醒任务时选择对应的通知账号即可</li>
                         </ol>
                         <div class="alert alert-info">

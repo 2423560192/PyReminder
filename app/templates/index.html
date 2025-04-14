@@ -117,7 +117,7 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <small class="text-muted">
-                                    {% if 'r' in config and config.r %}
+                                    {% if redis_connected %}
                                         <span class="text-success">✓ Redis已连接</span>
                                     {% else %}
                                         <span class="text-warning">⚠ 使用内存存储模式</span>
