@@ -8,6 +8,7 @@ PyReminder是一个基于Flask和HTML的Web版时间提醒助手，可以帮助�
 - **HTTP通知**：到达设定时间时自动发送通知（通过息知API）
 - **实时提醒**：在Web界面显示任务到期提醒
 - **任务管理**：查看、删除和跟踪任务状态
+- **通知账号管理**：可通过Web界面配置、添加和删除息知API令牌
 - **响应式设计**：适配各种设备屏幕大小
 - **持久化存储**：使用Redis存储任务，防止服务重启数据丢失
 - **多通知账号**：支持配置多个息知API账号，可在添加任务时选择
@@ -48,7 +49,7 @@ pip install -r requirements.txt
 
 3. 配置：
    - 复制 `.env.example` 为 `.env` 并配置环境变量
-   - 在 `tokens.yaml` 文件中配置通知账号
+   - 通知账号可通过Web界面管理（访问`/manage`路径）
 
 4. 运行应用：
 ```bash
@@ -101,7 +102,7 @@ python start.py
 5. 点击"Advanced"，添加环境变量：
    - `FLASK_SECRET_KEY`: 生成一个随机字符串
    - `NOTIFICATION_TOKEN`: 您的息知API令牌
-   - `REDIS_DB`: `2`
+   - `REDIS_DB`: `0`（**注意：Upstash只支持0号数据库**）
    - `REDIS_HOST`: 您的Upstash终端地址（如：`amused-bream-11167.upstash.io`）
    - `REDIS_PORT`: `6379`
    - `REDIS_PASSWORD`: 您的Upstash密码
@@ -123,20 +124,19 @@ python start.py
 # Redis设置 (Upstash)
 REDIS_HOST=amused-bream-11167.upstash.io
 REDIS_PORT=6379
-REDIS_DB=2
+REDIS_DB=0
 REDIS_PASSWORD=你的Upstash密码
 REDIS_SSL=True
 ```
 
-### 通知账号配置（tokens.yaml）
+### 通知账号配置
 
-```yaml
-# 息知通知令牌配置
-tokens:
-  默认: XZ77c1d923959433459ec3a08556a6a5b6
-  账号1: XZ00000000000000000000000000000000
-  账号2: XZ11111111111111111111111111111111
-```
+通知账号可以通过Web界面进行管理，访问应用的`/manage`路径或点击主页底部的"管理通知账号"按钮。
+
+你可以在此页面：
+- 添加新的通知账号（账号名称和息知令牌）
+- 查看已配置的所有通知账号
+- 删除不需要的通知账号（默认账号不可删除）
 
 ## 使用说明
 
@@ -158,9 +158,14 @@ tokens:
    - 当任务时间到时，会在网页上显示提醒通知
    - 同时，系统会通过息知API发送通知提醒
 
+5. **管理通知账号**：
+   - 点击主页底部的"管理通知账号"按钮
+   - 或直接访问`/manage`路径
+   - 添加、查看和删除通知账号
+
 ## 关于通知功能
 
-本应用使用[息知](https://xz.qqoq.net/)提供的API服务发送通知。您可以在tokens.yaml中配置多个息知账号，每个任务可以选择使用哪个账号发送通知。
+本应用使用[息知](https://xz.qqoq.net/)提供的API服务发送通知。您可以通过Web界面管理多个息知账号，每个任务可以选择使用哪个账号发送通知。
 
 ## 存储方式
 
@@ -184,7 +189,6 @@ tokens:
 - 支持更多提醒方式（短信、微信等）
 - 任务分类和标签功能
 - 任务优先级设置
-- 管理界面用于编辑通知账号配置
 
 ## 许可
 

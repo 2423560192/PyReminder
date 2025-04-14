@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>通知账号管理 - 时间提醒助手</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-lg-8 mx-auto">
+                <!-- Flash消息 -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <div class="card shadow mb-4">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <h1 class="mb-0 h3">通知账号管理</h1>
+                        <a href="{{ url_for('index') }}" class="btn btn-light btn-sm">返回主页</a>
+                    </div>
+                    <div class="card-body">
+                        <!-- 添加新令牌表单 -->
+                        <form id="tokenForm" action="{{ url_for('add_token') }}" method="post" class="mb-4">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="token_name" class="form-label">账号名称</label>
+                                    <input type="text" class="form-control" id="token_name" name="token_name" placeholder="给此账号起个名字" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="token_value" class="form-label">息知令牌</label>
+                                    <input type="text" class="form-control" id="token_value" name="token_value" placeholder="XZ开头的令牌" required pattern="XZ[a-zA-Z0-9]{30,}">
+                                    <div class="form-text">息知令牌通常以XZ开头，<a href="https://xz.qqoq.net/" target="_blank">点此获取</a></div>
+                                </div>
+                                <div class="col-12">
+                                    <button type="submit" class="btn btn-primary">添加通知账号</button>
+                                </div>
+                            </div>
+                        </form>
+
+                        <hr>
+
+                        <!-- 令牌列表 -->
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">已配置账号列表</h5>
+                            </div>
+                            <div class="card-body">
+                                {% if tokens %}
+                                    <div class="table-responsive">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>账号名称</th>
+                                                    <th>令牌值</th>
+                                                    <th>操作</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for name, value in tokens.items() %}
+                                                <tr>
+                                                    <td>{{ name }}</td>
+                                                    <td>
+                                                        <div class="input-group">
+                                                            <input type="text" class="form-control token-value" value="{{ value }}" readonly>
+                                                            <button class="btn btn-outline-secondary copy-btn" type="button" data-value="{{ value }}">复制</button>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <form action="{{ url_for('delete_token', token_name=name) }}" method="post" style="display: inline;">
+                                                            <button type="submit" class="btn btn-sm btn-danger" {% if name == '默认' %}disabled{% endif %}>删除</button>
+                                                        </form>
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {% else %}
+                                    <p class="text-center text-muted">暂无配置的通知账号，请添加一个新账号！</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">息知API使用说明</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>息知（Xi Zhi）是一个简单易用的消息推送服务，可以通过API将消息推送到手机。</p>
+                        <ol>
+                            <li>访问<a href="https://xz.qqoq.net/" target="_blank">息知官网</a>并登录</li>
+                            <li>在"我的"页面获取您的令牌（Token）</li>
+                            <li>将令牌填入上方表单添加到系统中</li>
+                            <li>在添加提醒任务时选择对应的通知账号即可</li>
+                        </ol>
+                        <div class="alert alert-info">
+                            <strong>提示：</strong> 默认账号不能删除，可以修改其令牌值。
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 复制令牌到剪贴板
+        document.addEventListener('DOMContentLoaded', function() {
+            const copyButtons = document.querySelectorAll('.copy-btn');
+            copyButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const value = this.getAttribute('data-value');
+                    navigator.clipboard.writeText(value).then(() => {
+                        // 更改按钮文本并恢复
+                        const originalText = this.textContent;
+                        this.textContent = '已复制!';
+                        setTimeout(() => {
+                            this.textContent = originalText;
+                        }, 2000);
+                    });
+                });
+            });
+        });
+    </script>
+</body>
+</html> 

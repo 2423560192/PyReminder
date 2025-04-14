@@ -9,12 +9,27 @@ import yaml
 import redis
 from dotenv import load_dotenv
 import urllib.parse
+import secrets
+import pytz
 
 # 加载环境变量
 load_dotenv()
 
 app = Flask(__name__, template_folder='app/templates', static_folder='app/static')
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'default_secret_key')
+
+# 配置时区
+TIMEZONE = os.getenv('TIMEZONE', 'Asia/Shanghai')  # 默认使用中国时区
+try:
+    TZ = pytz.timezone(TIMEZONE)
+    print(f"使用时区: {TIMEZONE}")
+except Exception as e:
+    print(f"时区设置错误，将使用UTC: {str(e)}")
+    TZ = pytz.UTC
+
+# 获取当前时间（带时区）
+def get_now():
+    return datetime.datetime.now(TZ)
 
 # Redis连接配置
 # 优先使用REDIS_URL（Render提供的环境变量）
@@ -25,14 +40,14 @@ if redis_url:
     redis_host = parsed_url.hostname
     redis_port = parsed_url.port or 6379
     redis_password = parsed_url.password
-    redis_db = int(os.getenv('REDIS_DB', 2))  # 使用DB 2
+    redis_db = 0  # Upstash只支持0号数据库
     redis_ssl = True  # Render Redis通常需要SSL
     print(f"使用REDIS_URL环境变量连接Redis")
 else:
     # 使用单独的环境变量
     redis_host = os.getenv('REDIS_HOST', 'localhost')
     redis_port = int(os.getenv('REDIS_PORT', 6379))
-    redis_db = int(os.getenv('REDIS_DB', 2))  # 默认使用DB 2
+    redis_db = 0  # Upstash只支持0号数据库
     redis_password = os.getenv('REDIS_PASSWORD')
     redis_ssl = os.getenv('REDIS_SSL', 'False').lower() in ['true', '1', 'yes']
 
@@ -56,13 +71,15 @@ except Exception as e:
 TASK_ID_KEY = "task:id_counter"
 # 任务列表键名
 TASKS_KEY = "tasks"
+# token配置文件路径
+TOKENS_FILE = 'tokens.yaml'
 
 # 加载息知token配置
 def load_tokens():
     try:
         # 检查tokens.yaml文件是否存在
-        if os.path.exists('tokens.yaml'):
-            with open('tokens.yaml', 'r', encoding='utf-8') as file:
+        if os.path.exists(TOKENS_FILE):
+            with open(TOKENS_FILE, 'r', encoding='utf-8') as file:
                 config = yaml.safe_load(file)
                 return config.get('tokens', {})
         else:
@@ -76,6 +93,27 @@ def load_tokens():
     except Exception as e:
         print(f"加载token配置失败: {str(e)}")
         return {"默认": os.getenv('NOTIFICATION_TOKEN', 'XZ77c1d923959433459ec3a08556a6a5b6')}
+
+# 保存息知token配置
+def save_tokens(tokens_dict):
+    try:
+        config = {'tokens': tokens_dict}
+        # 确保包含默认令牌
+        if '默认' not in config['tokens']:
+            config['tokens']['默认'] = os.getenv('NOTIFICATION_TOKEN', 'XZ77c1d923959433459ec3a08556a6a5b6')
+        
+        # 创建目录（如果不存在）
+        os.makedirs(os.path.dirname(TOKENS_FILE), exist_ok=True)
+        
+        # 保存到yaml文件
+        with open(TOKENS_FILE, 'w', encoding='utf-8') as file:
+            yaml.dump(config, file, allow_unicode=True)
+        
+        print(f"已保存{len(tokens_dict)}个token到{TOKENS_FILE}")
+        return True
+    except Exception as e:
+        print(f"保存token配置失败: {str(e)}")
+        return False
 
 # 获取所有配置的通知令牌
 tokens = load_tokens()
@@ -98,7 +136,11 @@ def save_task(task):
     if r:
         # 将datetime对象转换为ISO格式字符串存储
         task_copy = task.copy()
-        task_copy["datetime"] = task["datetime"].isoformat()
+        # 确保datetime有时区信息
+        dt = task["datetime"]
+        if dt.tzinfo is None:
+            dt = TZ.localize(dt)
+        task_copy["datetime"] = dt.isoformat()
         # 添加到Redis列表
         r.hset(TASKS_KEY, str(task["id"]), json.dumps(task_copy))
         return True
@@ -116,8 +158,11 @@ def get_all_tasks():
         for task_id, task_json in all_tasks.items():
             try:
                 task = json.loads(task_json)
-                # 将ISO格式字符串转回datetime对象
+                # 将ISO格式字符串转回datetime对象（带时区）
                 task["datetime"] = datetime.datetime.fromisoformat(task["datetime"])
+                # 确保时区正确
+                if task["datetime"].tzinfo is None:
+                    task["datetime"] = TZ.localize(task["datetime"])
                 tasks.append(task)
             except Exception as e:
                 print(f"任务解析错误: {str(e)}")
@@ -165,23 +210,43 @@ def send_notification(task_title, task_content, task_time, token_name="默认"):
 """
         }
         
-        response = requests.get(f'https://xizhi.qqoq.net/{token}.send', params=params, verify=False)
+        print(f"正在发送通知: {token[:8]}*** URL={f'https://xizhi.qqoq.net/{token}.send'}")
         
-        if response.status_code == 200:
-            print(f"已发送任务提醒通知：{task_title}，使用token: {token_name}")
-            return True
-        else:
-            print(f"发送通知失败，状态码：{response.status_code}")
+        try:
+            # 设置较长的超时时间和重试次数
+            response = requests.get(
+                f'https://xizhi.qqoq.net/{token}.send', 
+                params=params, 
+                verify=False,
+                timeout=30  # 增加请求超时时间
+            )
+            
+            print(f"通知请求状态码: {response.status_code}")
+            if response.status_code == 200:
+                response_text = response.text[:100] if len(response.text) > 100 else response.text
+                print(f"息知API响应: {response_text}")
+                print(f"已成功发送任务提醒通知：{task_title}，使用token: {token_name}")
+                return True
+            else:
+                print(f"发送通知失败，状态码：{response.status_code}，响应内容：{response.text[:200]}")
+                return False
+        except requests.exceptions.Timeout:
+            print(f"发送通知超时，可能是网络跨境问题，任务标题: {task_title}")
+            return False
+        except requests.exceptions.ConnectionError:
+            print(f"发送通知连接错误，可能是网络限制问题，任务标题: {task_title}")
             return False
             
     except Exception as e:
-        print(f"发送通知失败: {str(e)}")
+        print(f"发送通知失败，详细错误: {str(e)}")
+        import traceback
+        traceback.print_exc()  # 打印详细堆栈信息
         return False
 
 # 检查任务线程
 def check_tasks():
     while True:
-        now = datetime.datetime.now()
+        now = get_now()
         triggered_tasks = []
         
         # 获取所有任务
@@ -189,8 +254,14 @@ def check_tasks():
         
         # 检查是否有到期任务
         for task in current_tasks:
-            if not task.get("triggered", False) and now >= task["datetime"]:
-                print(f"任务触发: {task['title']}")
+            # 确保任务时间有时区信息
+            task_datetime = task["datetime"]
+            if task_datetime.tzinfo is None:
+                # 为无时区任务添加时区
+                task_datetime = TZ.localize(task_datetime)
+            
+            if not task.get("triggered", False) and now >= task_datetime:
+                print(f"任务触发: {task['title']} (计划时间: {task_datetime}, 当前时间: {now})")
                 
                 # 更新任务状态
                 if r:
@@ -203,7 +274,7 @@ def check_tasks():
         # 处理触发的任务
         for task in triggered_tasks:
             task_time = task["datetime"].strftime("%Y-%m-%d %H:%M")
-            print('发送提醒')
+            print(f'发送提醒: {task["title"]} - {task_time}')
             send_notification(
                 task_title=task["title"],
                 task_content=task.get("content", "无内容"),
@@ -243,9 +314,14 @@ def add_task():
     
     # 解析日期和时间
     try:
-        reminder_datetime = datetime.datetime.strptime(
+        # 创建无时区的datetime对象
+        naive_datetime = datetime.datetime.strptime(
             f"{reminder_date} {reminder_time}", "%Y-%m-%d %H:%M"
         )
+        
+        # 添加时区信息
+        reminder_datetime = TZ.localize(naive_datetime)
+        print(f"新任务时间设置为: {reminder_datetime} (带时区)")
         
         # 创建新任务
         task_id = get_next_task_id()
@@ -266,7 +342,8 @@ def add_task():
         
         flash("任务添加成功！", "success")
         return redirect(url_for('index'))
-    except ValueError:
+    except ValueError as e:
+        print(f"日期解析错误: {str(e)}")
         flash("日期格式错误，请使用YYYY-MM-DD HH:MM格式", "danger")
         return redirect(url_for('index'))
 
@@ -293,6 +370,68 @@ def get_tasks():
         serializable_tasks.append(serializable_task)
     
     return jsonify(serializable_tasks)
+
+@app.route('/manage')
+def manage_tokens():
+    """息知API令牌管理页面"""
+    return render_template('manage_tokens.html', tokens=tokens)
+
+@app.route('/add_token', methods=['POST'])
+def add_token():
+    """添加或更新息知API令牌"""
+    token_name = request.form.get('token_name', '').strip()
+    token_value = request.form.get('token_value', '').strip()
+    
+    # 验证输入
+    if not token_name:
+        flash("账号名称不能为空", "danger")
+        return redirect(url_for('manage_tokens'))
+    
+    if not token_value or not token_value.startswith('XZ'):
+        flash("息知令牌格式不正确，应以XZ开头", "danger")
+        return redirect(url_for('manage_tokens'))
+    
+    # 更新全局tokens字典
+    global tokens
+    
+    # 检查是否已存在同名账号
+    is_new = token_name not in tokens
+    tokens[token_name] = token_value
+    
+    # 保存到文件
+    if save_tokens(tokens):
+        if is_new:
+            flash(f"已添加新通知账号「{token_name}」", "success")
+        else:
+            flash(f"已更新通知账号「{token_name}」的令牌", "success")
+    else:
+        flash(f"保存账号失败，请检查文件权限", "danger")
+    
+    return redirect(url_for('manage_tokens'))
+
+@app.route('/delete_token/<token_name>', methods=['POST'])
+def delete_token(token_name):
+    """删除息知API令牌"""
+    global tokens
+    
+    # 不允许删除"默认"账号
+    if token_name == '默认':
+        flash("不能删除默认通知账号", "danger")
+        return redirect(url_for('manage_tokens'))
+    
+    # 从字典中删除
+    if token_name in tokens:
+        del tokens[token_name]
+        
+        # 保存到文件
+        if save_tokens(tokens):
+            flash(f"已删除通知账号「{token_name}」", "success")
+        else:
+            flash(f"删除账号失败，请检查文件权限", "danger")
+    else:
+        flash(f"通知账号「{token_name}」不存在", "warning")
+    
+    return redirect(url_for('manage_tokens'))
 
 @app.template_filter('format_datetime')
 def format_datetime(dt):

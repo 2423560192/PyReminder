@@ -13,8 +13,10 @@ services:
         value: "False"
       - key: NOTIFICATION_TOKEN
         sync: false  # 允许手动设置
+      - key: TIMEZONE
+        value: "Asia/Shanghai"  # 使用中国时区
       - key: REDIS_DB
-        value: "2"
+        value: "0"
       - key: REDIS_HOST
         value: "amused-bream-11167.upstash.io"
       - key: REDIS_PORT
