@@ -67,11 +67,21 @@ python start.py
 ### 1. 准备工作
 
 - 创建[Render](https://render.com)账号
+- 创建[Upstash](https://upstash.com)账号并创建Redis数据库
 - Fork或克隆此仓库到您的GitHub账号
 
-### 2. 在Render上部署
+### 2. 配置Upstash Redis
 
-#### 方法一：使用部署按钮（推荐）
+1. 登录[Upstash](https://upstash.com)控制台
+2. 创建新的Redis数据库
+3. 获取连接详情：
+   - 终端地址（如：`amused-bream-11167.upstash.io`）
+   - 端口（通常为`6379`）
+   - 密码
+
+### 3. 在Render上部署
+
+#### 方法一：使用部署按钮
 
 点击下面的按钮一键部署到Render：
 
@@ -92,31 +102,30 @@ python start.py
    - `FLASK_SECRET_KEY`: 生成一个随机字符串
    - `NOTIFICATION_TOKEN`: 您的息知API令牌
    - `REDIS_DB`: `2`
+   - `REDIS_HOST`: 您的Upstash终端地址（如：`amused-bream-11167.upstash.io`）
+   - `REDIS_PORT`: `6379`
+   - `REDIS_PASSWORD`: 您的Upstash密码
+   - `REDIS_SSL`: `True`
 
 6. 点击"Create Web Service"
-
-### 3. 添加Redis数据库
-
-1. 在Render控制台，点击"New +"，选择"Redis"
-2. 填写名称，如`pyreminder-redis`
-3. 创建后，Render会自动设置`REDIS_URL`环境变量，无需手动配置
-4. 回到您的Web服务设置，确保已自动关联Redis服务
 
 ### 4. 完成部署
 
 - 部署完成后，点击生成的URL访问您的应用
 - 第一次访问可能需要等待几分钟应用启动
+- 通过应用日志确认是否成功连接到Upstash Redis
 
 ## 配置选项
 
 ### Redis配置（.env文件）
 
 ```
-# Redis设置
-REDIS_HOST=localhost
+# Redis设置 (Upstash)
+REDIS_HOST=amused-bream-11167.upstash.io
 REDIS_PORT=6379
 REDIS_DB=2
-REDIS_PASSWORD=your_redis_password
+REDIS_PASSWORD=你的Upstash密码
+REDIS_SSL=True
 ```
 
 ### 通知账号配置（tokens.yaml）
@@ -158,6 +167,7 @@ tokens:
 应用支持两种存储方式：
 
 1. **Redis存储**（推荐）：
+   - 使用Upstash Redis提供云端存储
    - 任务数据持久化保存
    - 重启后数据不会丢失
    - 可用于分布式部署

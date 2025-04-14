@@ -26,6 +26,7 @@ if redis_url:
     redis_port = parsed_url.port or 6379
     redis_password = parsed_url.password
     redis_db = int(os.getenv('REDIS_DB', 2))  # 使用DB 2
+    redis_ssl = True  # Render Redis通常需要SSL
     print(f"使用REDIS_URL环境变量连接Redis")
 else:
     # 使用单独的环境变量
@@ -33,6 +34,7 @@ else:
     redis_port = int(os.getenv('REDIS_PORT', 6379))
     redis_db = int(os.getenv('REDIS_DB', 2))  # 默认使用DB 2
     redis_password = os.getenv('REDIS_PASSWORD')
+    redis_ssl = os.getenv('REDIS_SSL', 'False').lower() in ['true', '1', 'yes']
 
 # 初始化Redis客户端
 try:
@@ -41,10 +43,11 @@ try:
         port=redis_port,
         db=redis_db,
         password=redis_password,
+        ssl=redis_ssl,  # 启用SSL支持Upstash
         decode_responses=True  # 自动将字节解码为字符串
     )
     r.ping()  # 测试连接
-    print(f"已连接到Redis服务器 (数据库: {redis_db})")
+    print(f"已连接到Redis服务器 (数据库: {redis_db}, SSL: {redis_ssl})")
 except Exception as e:
     print(f"警告: 无法连接到Redis服务器: {str(e)}，将使用内存存储")
     r = None

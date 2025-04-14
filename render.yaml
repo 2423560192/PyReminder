@@ -15,10 +15,11 @@ services:
         sync: false  # 允许手动设置
       - key: REDIS_DB
         value: "2"
-    
-    # 添加Redis数据库配置
-databases:
-  - name: pyreminder-redis
-    plan: free
-    type: redis
-    ipAllowList: []  # 允许所有IP访问 
+      - key: REDIS_HOST
+        value: "amused-bream-11167.upstash.io"
+      - key: REDIS_PORT
+        value: "6379"
+      - key: REDIS_PASSWORD
+        sync: false  # 需要手动设置
+      - key: REDIS_SSL
+        value: "True" 
