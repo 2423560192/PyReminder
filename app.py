@@ -231,8 +231,23 @@ tasks = []
 # 发送通知
 def send_notification(task_title, task_content, task_time, token_name="默认"):
     try:
+        # 首先刷新tokens以确保使用最新的数据
+        global tokens
+        if r:
+            refreshed_tokens = r.hgetall(TOKENS_KEY)
+            if refreshed_tokens:
+                tokens = refreshed_tokens
+        
         # 获取指定名称的token
-        token = tokens.get(token_name, tokens.get("默认"))
+        token = tokens.get(token_name)
+        if not token:
+            print(f"警告: 通知账号'{token_name}'不存在，将使用默认通知账号")
+            token = tokens.get("默认")
+            
+        # 如果默认账号也不存在，这是一个严重错误
+        if not token:
+            print("错误: 无法找到有效的通知账号，无法发送通知")
+            return False
         
         params = {
             'title': '任务提醒通知',
@@ -328,6 +343,11 @@ def system_info():
     """系统信息页面，显示时区和数据库连接状态"""
     now = get_now()
     
+    # 同步Redis中的tokens数据
+    global tokens
+    if r:
+        tokens = r.hgetall(TOKENS_KEY) or tokens
+    
     # 计算系统运行时间
     uptime = datetime.datetime.now() - STARTUP_TIME
     hours, remainder = divmod(uptime.total_seconds(), 3600)
@@ -355,12 +375,23 @@ def system_info():
 
 @app.route('/')
 def index():
+    # 重新从数据源加载tokens，确保与最新添加的账号同步
+    global tokens
+    if r:
+        # 从Redis重新获取最新数据
+        tokens = r.hgetall(TOKENS_KEY) or tokens
+    
     # 获取所有任务
     all_tasks = get_all_tasks() if r else tasks
     return render_template('index.html', tasks=all_tasks, tokens=tokens, redis_connected=r is not None)
 
 @app.route('/add_task', methods=['POST'])
 def add_task():
+    # 添加任务前先刷新tokens，确保使用最新的通知账号列表
+    global tokens
+    if r:
+        tokens = r.hgetall(TOKENS_KEY) or tokens
+    
     title = request.form.get('title', '未命名任务')
     content = request.form.get('content', '')
     reminder_date = request.form.get('date', '')
@@ -424,6 +455,11 @@ def delete_task(task_id):
 
 @app.route('/get_tasks')
 def get_tasks():
+    # 同步Redis中的tokens数据
+    global tokens
+    if r:
+        tokens = r.hgetall(TOKENS_KEY) or tokens
+    
     # 获取所有任务并序列化
     all_tasks = get_all_tasks() if r else tasks
     serializable_tasks = []
@@ -506,6 +542,8 @@ def delete_token(token_name):
         # 如果Redis可用，直接从Redis删除
         if r:
             r.hdel(TOKENS_KEY, token_name)
+            # 重新从Redis加载tokens确保同步
+            tokens = r.hgetall(TOKENS_KEY) or tokens
             flash(f"已删除通知账号「{token_name}」", "success")
             return redirect(url_for('manage_tokens'))
         
@@ -529,4 +567,4 @@ def format_datetime(dt):
 if __name__ == '__main__':
     print("时间提醒助手启动...")
     debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() in ['true', '1', 'yes']
-    app.run(debug=debug_mode, host='0.0.0.0', port=5000) 
+    app.run(debug=debug_mode, host='0.0.0.0', port=5000)
