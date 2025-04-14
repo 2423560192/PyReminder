@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: pyreminder-app
+    env: python
+    plan: free
+    buildCommand: ""
+    startCommand: python app.py
+    envVars:
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: pyreminder-redis
+
+  - type: redis
+    name: pyreminder-redis
+    plan: free

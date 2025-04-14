@@ -1,0 +1,24 @@
+services:
+  # Web服务配置
+  - type: web
+    name: pyreminder
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: FLASK_SECRET_KEY
+        generateValue: true  # 自动生成随机密钥
+      - key: FLASK_DEBUG
+        value: "False"
+      - key: NOTIFICATION_TOKEN
+        sync: false  # 允许手动设置
+      - key: REDIS_DB
+        value: "2"
+    
+    # 添加Redis数据库配置
+databases:
+  - name: pyreminder-redis
+    plan: free
+    type: redis
+    ipAllowList: []  # 允许所有IP访问 
