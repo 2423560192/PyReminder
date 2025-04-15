@@ -250,7 +250,7 @@ def send_notification(task_title, task_content, task_time, token_name="默认"):
             return False
         
         params = {
-            'title': '任务提醒通知',
+            'title': task_title,
             'content': f"""任务名称: {task_title}\n
 任务内容: {task_content}\n
 提醒时间: {task_time}\n
