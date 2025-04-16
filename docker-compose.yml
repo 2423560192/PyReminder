@@ -10,18 +10,15 @@ services:
     expose:
       - "8000"
     environment:
-      - FLASK_APP=app.py
-      - FLASK_ENV=production
       - TIMEZONE=Asia/Shanghai
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_DB=0
-      - REDIS_PASSWORD=5201314
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-5201314}
       - REDIS_SSL=False
     env_file:
       - ./config/.env
     volumes:
-      - ./:/app
       - ./logs/app:/app/logs
     networks:
       - pyreminder-network
@@ -39,9 +36,7 @@ services:
   redis:
     image: redis:6-alpine
     container_name: pyreminder-redis
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-pyreminder}
-    expose:
-      - "6379"
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-5201314}
     volumes:
       - redis-data:/data
     networks:
