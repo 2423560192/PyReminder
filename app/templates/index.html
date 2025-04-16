@@ -97,8 +97,8 @@
                                                         {% endif %}
                                                     </td>
                                                     <td>
-                                                        <form action="{{ url_for('delete_task', task_id=task.id) }}" method="post" style="display: inline;">
-                                                            <button type="submit" class="btn btn-sm btn-danger">删除</button>
+                                                        <button type="button" class="btn btn-sm btn-danger" onclick="showDeleteConfirm({{ task.id }})">删除</button>
+                                                        <form id="deleteForm{{ task.id }}" action="{{ url_for('delete_task', task_id=task.id) }}" method="post" style="display: none;">
                                                         </form>
                                                     </td>
                                                 </tr>
@@ -147,6 +147,25 @@
                 </div>
             </div>
         </div>
+        
+        <!-- 删除确认模态框 -->
+        <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title" id="deleteConfirmModalLabel">确认删除</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>确定要删除这个任务吗？此操作无法撤销。</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                        <button type="button" class="btn btn-danger" id="confirmDeleteBtn">确认删除</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -158,6 +177,19 @@
             // 定时检查任务状态
             setInterval(checkTasks, 5000);
         });
+
+        // 显示删除确认模态框
+        function showDeleteConfirm(taskId) {
+            const modal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+            const confirmBtn = document.getElementById('confirmDeleteBtn');
+            
+            // 设置确认按钮点击事件
+            confirmBtn.onclick = function() {
+                document.getElementById('deleteForm' + taskId).submit();
+            };
+            
+            modal.show();
+        }
 
         // 检查任务状态
         function checkTasks() {

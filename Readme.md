@@ -128,24 +128,33 @@ python start.py
 1. 配置环境变量：
    - 复制`.env.example`为`.env`并修改配置
    - Docker Compose配置中已包含Redis服务，您不需要额外的Redis服务器
-   - 默认Redis密码为`redispassword`，您应该在生产环境中修改它
+   - 默认Redis密码为`5201314`，您应该在生产环境中修改它
 
-2. 构建并启动容器：
+2. 配置Nginx（可选）：
+   - 项目已包含基础的`nginx.conf`配置文件
+   - 编辑`nginx.conf`文件，将`example.com`替换为您的实际域名
+   - 如果您有SSL证书，可以添加SSL配置
+
+3. 构建并启动容器：
 ```bash
 docker-compose up -d
 ```
 
-3. 查看容器状态：
+4. 查看容器状态：
 ```bash
 docker-compose ps
 ```
 
-4. 查看日志：
+5. 查看日志：
 ```bash
 docker-compose logs -f
 ```
 
-5. 停止服务：
+6. 访问方式：
+   - 包含Nginx配置：通过`http://您的域名`访问（不需要端口号）
+   - 不使用Nginx：通过`http://服务器IP:8000`访问
+
+7. 停止服务：
 ```bash
 docker-compose down
 ```
@@ -292,3 +301,31 @@ REDIS_SSL=True
 ## 许可
 
 本项目采用MIT许可证。
+
+### 配置SSL证书（HTTPS）
+
+项目已集成Let's Encrypt免费SSL证书配置，让您的网站支持安全的HTTPS访问。
+
+1. 修改初始化脚本中的邮箱：
+   - 编辑`init-letsencrypt.sh`文件
+   - 将`your-email@example.com`替换为您的真实邮箱（用于证书到期通知）
+
+2. 设置脚本执行权限并运行：
+```bash
+chmod +x init-letsencrypt.sh
+./init-letsencrypt.sh
+```
+
+3. 启动Docker服务：
+```bash
+docker-compose up -d
+```
+
+4. 验证HTTPS配置：
+   - 通过浏览器访问`https://pyreminder.top`
+   - 应该显示安全锁图标，表示SSL证书配置成功
+
+5. 证书自动续期：
+   - Let's Encrypt证书有效期为90天
+   - 系统已配置自动续期功能，每12小时检查一次
+   - 无需手动干预，证书会自动更新

@@ -77,8 +77,8 @@
                                                         </div>
                                                     </td>
                                                     <td>
-                                                        <form action="{{ url_for('delete_token', token_name=name) }}" method="post" style="display: inline;">
-                                                            <button type="submit" class="btn btn-sm btn-danger" {% if name == '默认' %}disabled{% endif %}>删除</button>
+                                                        <button type="button" class="btn btn-sm btn-danger" onclick="showDeleteConfirm('{{ name }}')" {% if name == '默认' %}disabled{% endif %}>删除</button>
+                                                        <form id="deleteForm{{ name|replace(' ', '_') }}" action="{{ url_for('delete_token', token_name=name) }}" method="post" style="display: none;">
                                                         </form>
                                                     </td>
                                                 </tr>
@@ -124,6 +124,25 @@
         </div>
     </div>
 
+    <!-- 删除确认模态框 -->
+    <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="deleteConfirmModalLabel">确认删除</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>确定要删除 "<span id="tokenNameToDelete"></span>" 通知账号吗？此操作无法撤销。</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">确认删除</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // 复制令牌到剪贴板
         document.addEventListener('DOMContentLoaded', function() {
@@ -142,6 +161,23 @@
                 });
             });
         });
+
+        // 显示删除确认模态框
+        function showDeleteConfirm(name) {
+            const modal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+            const confirmBtn = document.getElementById('confirmDeleteBtn');
+            const tokenNameSpan = document.getElementById('tokenNameToDelete');
+            
+            // 设置要删除的通知账号名称
+            tokenNameSpan.textContent = name;
+            
+            // 设置确认按钮点击事件
+            confirmBtn.onclick = function() {
+                document.getElementById('deleteForm' + name.replace(/ /g, '_')).submit();
+            };
+            
+            modal.show();
+        }
     </script>
 </body>
 </html> 
