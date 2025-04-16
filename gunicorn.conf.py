@@ -1,35 +1,36 @@
-import multiprocessing
-import os
+# Gunicorn配置文件
 
-# 工作进程配置
-workers = multiprocessing.cpu_count() * 2 + 1
-worker_class = "sync"
+# 绑定IP和端口
+bind = "0.0.0.0:5000"
+
+# 工作进程数
+workers = 2
+
+# 每个工作进程的线程数
 threads = 2
 
-# 绑定地址
-bind = "0.0.0.0:8000"
+# 工作模式
+worker_class = 'sync'
 
-# 日志配置 - 使用标准输出/错误流
-errorlog = "-"  # 输出到标准错误
-accesslog = "-"  # 输出到标准输出
-loglevel = os.environ.get("GUNICORN_LOG_LEVEL", "info")
-
-# 性能配置
-timeout = 120
-graceful_timeout = 30
-keepalive = 5
-
-# 工作进程设置
+# 最大请求数
 max_requests = 1000
 max_requests_jitter = 50
 
-# 其他配置
+# 超时设置
+timeout = 30
+graceful_timeout = 30
+keepalive = 2
+
+# 日志设置
+accesslog = "/app/logs/app/access.log"
+errorlog = "/app/logs/app/error.log"
+loglevel = "info"
+
+# 守护进程设置
 daemon = False
-preload_app = True
 
-# 健康检查端点
-def on_starting(server):
-    print("Gunicorn starting...")
+# 进程名称
+proc_name = "pyreminder"
 
-def on_exit(server):
-    print("Gunicorn shutting down...") 
+# 清理环境
+preload_app = True 

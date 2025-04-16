@@ -32,7 +32,20 @@ ENV/
 *.swo
 
 # 日志
+logs/
 *.log
 
+# Docker相关
+.dockerignore
+docker-compose.override.yml
+
+# Redis数据
+*.rdb
+dump.rdb
+
 # 其他
-.DS_Store 
+.DS_Store
+tokens.yaml
+
+# 不忽略示例环境文件
+!.env.example 

@@ -1,147 +1,38 @@
 #!/bin/bash
 
-# 设置颜色常量
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-NC='\033[0m' # 无颜色
+# 部署脚本 - PyReminder项目
 
-# 输出带颜色的消息
-echo_color() {
-  echo -e "${2}${1}${NC}"
-}
+echo "=== 开始部署PyReminder ==="
 
-echo_color "开始部署 PyReminder 应用..." "${GREEN}"
-
-# 检查Docker是否安装
-if ! command -v docker &> /dev/null; then
-  echo_color "错误: Docker未安装，请先安装Docker" "${RED}"
-  exit 1
-fi
-
-# 检查Docker Compose是否安装
-if ! command -v docker-compose &> /dev/null; then
-  echo_color "错误: Docker Compose未安装，请先安装Docker Compose" "${RED}"
-  exit 1
+# 检查是否安装了Docker和Docker Compose
+if ! command -v docker &> /dev/null || ! command -v docker-compose &> /dev/null; then
+    echo "错误: 需要安装Docker和Docker Compose"
+    echo "可以使用以下命令安装Docker:"
+    echo "curl -fsSL https://get.docker.com | bash"
+    echo "可以使用以下命令安装Docker Compose:"
+    echo "curl -L \"https://github.com/docker/compose/releases/download/v2.6.0/docker-compose-$(uname -s)-$(uname -m)\" -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose"
+    exit 1
 fi
 
 # 创建必要的目录
-echo_color "创建必要的目录结构..." "${YELLOW}"
+echo "创建必要的目录..."
 mkdir -p config/nginx logs/nginx logs/app
 
-# 设置日志目录权限
-echo_color "设置日志目录权限..." "${YELLOW}"
-chmod -R 777 logs/app
-chmod -R 777 logs/nginx
-
-# 停止并移除旧容器（如果存在）
-echo_color "停止并移除旧容器..." "${YELLOW}"
-docker-compose down 2>/dev/null || true
-
-# 检查并创建配置文件
-if [ ! -f "config/nginx/nginx.conf" ]; then
-  echo_color "创建Nginx配置文件..." "${YELLOW}"
-  
-  cat > config/nginx/nginx.conf << 'EOF'
-server {
-    listen 80;
-    server_name _;
-    
-    # 日志配置
-    access_log /var/log/nginx/access.log;
-    error_log /var/log/nginx/error.log;
-    
-    # 应用主路径
-    location / {
-        proxy_pass http://web:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        
-        # 超时设置
-        proxy_connect_timeout 300;
-        proxy_send_timeout 300;
-        proxy_read_timeout 300;
-        send_timeout 300;
-    }
-
-    # 静态文件处理
-    location /static/ {
-        alias /app/static/;
-        expires 7d;
-        add_header Cache-Control "public, max-age=604800";
-    }
-    
-    # 健康检查端点
-    location /health {
-        proxy_pass http://web:8000/health;
-        access_log off;
-    }
-}
-EOF
+# 如果.env文件不存在，从.env.example复制
+if [ ! -f .env ]; then
+    echo "创建环境变量文件..."
+    cp .env.example .env
+    echo "请编辑.env文件设置你的环境变量"
 fi
 
-# 确保环境变量文件存在
-if [ ! -f "config/.env" ]; then
-  echo_color "创建环境变量文件..." "${YELLOW}"
-  
-  if [ -f ".env.example" ]; then
-    cp .env.example config/.env
-    echo_color "已从.env.example创建环境变量文件，请检查配置" "${YELLOW}"
-  else
-    cat > config/.env << 'EOF'
-# 通知服务配置
-NOTIFICATION_TOKEN=XZ77c1d923959433459ec3a08556a6a5b6
+# 构建并启动容器
+echo "构建并启动Docker容器..."
+docker-compose up -d --build
 
-# Flask设置
-FLASK_SECRET_KEY=dawdawfaasfaav23134
-FLASK_DEBUG=False
-
-# 时区设置
-TIMEZONE=Asia/Shanghai
-
-# Redis设置
-REDIS_HOST=redis
-REDIS_PORT=6379
-REDIS_DB=0
-REDIS_PASSWORD=5201314
-REDIS_SSL=False
-EOF
-    echo_color "已创建默认环境变量文件，请检查并修改配置" "${YELLOW}"
-  fi
-fi
-
-# 构建并启动服务
-echo_color "构建并启动服务..." "${GREEN}"
-docker-compose build
-docker-compose up -d
-
-# 等待服务启动
-echo_color "等待服务启动..." "${YELLOW}"
-sleep 5
-
-# 检查服务状态
-echo_color "检查服务状态..." "${YELLOW}"
+# 检查启动状态
+echo "检查容器状态..."
 docker-compose ps
 
-# 检查应用是否可访问
-echo_color "检查应用是否可访问..." "${YELLOW}"
-if curl -s http://localhost/health &> /dev/null; then
-  echo_color "✓ 应用已成功启动并可以访问!" "${GREEN}"
-  
-  # 获取服务器IP
-  SERVER_IP=$(hostname -I | awk '{print $1}')
-  
-  echo_color "\n您可以通过以下地址访问应用:" "${GREEN}"
-  echo_color "  http://localhost" "${GREEN}"
-  echo_color "  http://$SERVER_IP" "${GREEN}"
-else
-  echo_color "✗ 应用启动失败或无法访问" "${RED}"
-  echo_color "请检查docker日志了解详情:" "${YELLOW}"
-  echo_color "  docker-compose logs" "${YELLOW}"
-fi
-
-# 显示日志查看命令
-echo_color "\n如需查看应用日志，请运行:" "${YELLOW}"
-echo_color "  docker-compose logs -f" "${YELLOW}" 
+echo "=== PyReminder部署完成 ==="
+echo "你可以通过服务器IP或域名访问应用"
+echo "如需查看日志，请运行: docker-compose logs -f" 
