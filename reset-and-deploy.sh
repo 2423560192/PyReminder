@@ -11,7 +11,7 @@ rm -rf ./certbot
 
 # 清理nginx.conf文件
 echo "重写nginx.conf文件..."
-cat > nginx.conf << 'EOF'
+cat > nginx.conf << 'EOT'
 server {
     listen 80;
     server_name pyreminder.top www.pyreminder.top;
@@ -43,11 +43,11 @@ server {
         add_header Content-Type text/plain;
     }
 }
-EOF
+EOT
 
 # 重写docker-compose.yml文件
 echo "重写docker-compose.yml文件..."
-cat > docker-compose.yml << 'EOF'
+cat > docker-compose.yml << 'EOT'
 version: '3.8'
 
 services:
@@ -105,7 +105,7 @@ networks:
 volumes:
   redis-data:
     driver: local
-EOF
+EOT
 
 # 重新启动服务
 echo "重新启动服务..."
