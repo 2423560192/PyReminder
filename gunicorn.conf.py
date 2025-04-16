@@ -5,7 +5,7 @@ workers = multiprocessing.cpu_count() * 2 + 1
 # 每个进程的线程数
 threads = 2
 # 绑定地址
-bind = "0.0.0.0:10000"
+bind = "0.0.0.0:8000"
 # 超时时间
 timeout = 120
 # 日志级别
