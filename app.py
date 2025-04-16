@@ -564,6 +564,27 @@ def format_datetime(dt):
         return dt.strftime("%Y-%m-%d %H:%M")
     return dt
 
+# 健康检查端点
+@app.route('/health')
+def health_check():
+    """健康检查端点，用于Docker健康检查"""
+    try:
+        # 检查Redis连接
+        if r:
+            r.ping()
+        
+        return jsonify({
+            'status': 'healthy',
+            'redis': 'connected' if r else 'disconnected',
+            'time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'error': str(e),
+            'time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }), 500
+
 if __name__ == '__main__':
     print("时间提醒助手启动...")
     debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() in ['true', '1', 'yes']

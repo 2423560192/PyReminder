@@ -1,26 +1,35 @@
 import multiprocessing
+import os
 
-# 工作进程数量
+# 工作进程配置
 workers = multiprocessing.cpu_count() * 2 + 1
-# 每个进程的线程数
+worker_class = "sync"
 threads = 2
+
 # 绑定地址
 bind = "0.0.0.0:8000"
-# 超时时间
+
+# 日志配置
+errorlog = "logs/gunicorn-error.log"
+accesslog = "logs/gunicorn-access.log"
+loglevel = os.environ.get("GUNICORN_LOG_LEVEL", "info")
+
+# 性能配置
 timeout = 120
-# 日志级别
-loglevel = "info"
-# 最大请求数
-max_requests = 1000
-# 最大请求随机抖动
-max_requests_jitter = 50
-# 预加载应用
-preload_app = True
-# 守护进程模式
-daemon = False
-# 工作模式
-worker_class = "sync"
-# 优雅重启时间
 graceful_timeout = 30
-# 保持连接时间
-keepalive = 5 
+keepalive = 5
+
+# 工作进程设置
+max_requests = 1000
+max_requests_jitter = 50
+
+# 其他配置
+daemon = False
+preload_app = True
+
+# 健康检查端点
+def on_starting(server):
+    print("Gunicorn starting...")
+
+def on_exit(server):
+    print("Gunicorn shutting down...") 

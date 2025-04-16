@@ -1,8 +1,12 @@
 version: '3.8'
 
 services:
+  # Flask应用服务
   web:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pyreminder-web
     expose:
       - "8000"
     environment:
@@ -15,43 +19,67 @@ services:
       - REDIS_PASSWORD=5201314
       - REDIS_SSL=False
     env_file:
-      - .env
-    restart: unless-stopped
+      - ./config/.env
     volumes:
-      - .:/app
+      - ./:/app
+      - ./logs/app:/app/logs
     networks:
-      - app-network
+      - pyreminder-network
+    restart: always
     depends_on:
       - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
+  # Redis数据库服务
   redis:
     image: redis:6-alpine
-    command: redis-server --requirepass 5201314
+    container_name: pyreminder-redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-pyreminder}
     expose:
       - "6379"
     volumes:
       - redis-data:/data
-    restart: unless-stopped
     networks:
-      - app-network
+      - pyreminder-network
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
+  # Nginx代理服务
   nginx:
-    image: nginx:alpine
+    image: nginx:1.21-alpine
+    container_name: pyreminder-nginx
+    restart: always
     ports:
       - "80:80"
     volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf
-      - ./app/static:/app/static
+      - ./config/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./logs/nginx:/var/log/nginx
+      - ./app/static:/app/static:ro
     depends_on:
       - web
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
-      - app-network
-    restart: unless-stopped
+      - pyreminder-network
 
+# 网络配置
 networks:
-  app-network:
-    driver: bridge
+  pyreminder-network:
+    name: pyreminder-network
 
+# 数据卷配置
 volumes:
   redis-data:
-    driver: local 
+    name: pyreminder-redis-data 
