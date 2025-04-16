@@ -26,7 +26,7 @@ services:
 
   redis:
     image: redis:6-alpine
-    command: redis-server --requirepass redispassword
+    command: redis-server --requirepass 5201314
     ports:
       - "6379:6379"
     volumes:
