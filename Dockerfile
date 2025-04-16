@@ -27,6 +27,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # 创建日志目录
 RUN mkdir -p /app/logs && \
+    chmod -R 777 /app/logs && \
     chown -R pyreminder:pyreminder /app
 
 # 复制项目文件

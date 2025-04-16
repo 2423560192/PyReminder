@@ -29,6 +29,11 @@ fi
 echo_color "创建必要的目录结构..." "${YELLOW}"
 mkdir -p config/nginx logs/nginx logs/app
 
+# 设置日志目录权限
+echo_color "设置日志目录权限..." "${YELLOW}"
+chmod -R 777 logs/app
+chmod -R 777 logs/nginx
+
 # 停止并移除旧容器（如果存在）
 echo_color "停止并移除旧容器..." "${YELLOW}"
 docker-compose down 2>/dev/null || true

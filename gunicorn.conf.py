@@ -9,9 +9,9 @@ threads = 2
 # 绑定地址
 bind = "0.0.0.0:8000"
 
-# 日志配置
-errorlog = "logs/gunicorn-error.log"
-accesslog = "logs/gunicorn-access.log"
+# 日志配置 - 使用标准输出/错误流
+errorlog = "-"  # 输出到标准错误
+accesslog = "-"  # 输出到标准输出
 loglevel = os.environ.get("GUNICORN_LOG_LEVEL", "info")
 
 # 性能配置
