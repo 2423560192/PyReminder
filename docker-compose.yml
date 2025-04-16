@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=production
+      - TIMEZONE=Asia/Shanghai
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - REDIS_PASSWORD=5201314
+      - REDIS_SSL=False
+    env_file:
+      - .env
+    restart: unless-stopped
+    volumes:
+      - .:/app
+    networks:
+      - app-network
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:6-alpine
+    command: redis-server --requirepass redispassword
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+    driver: local 

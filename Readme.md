@@ -116,6 +116,105 @@ python start.py
 - 第一次访问可能需要等待几分钟应用启动
 - 通过应用日志确认是否成功连接到Upstash Redis
 
+## Docker部署指南
+
+### 1. 准备工作
+
+- 确保服务器已安装Docker和Docker Compose
+- 配置好`.env`文件（参考`.env.example`）
+
+### 2. 使用Docker Compose部署（推荐）
+
+1. 配置环境变量：
+   - 复制`.env.example`为`.env`并修改配置
+   - Docker Compose配置中已包含Redis服务，您不需要额外的Redis服务器
+   - 默认Redis密码为`redispassword`，您应该在生产环境中修改它
+
+2. 构建并启动容器：
+```bash
+docker-compose up -d
+```
+
+3. 查看容器状态：
+```bash
+docker-compose ps
+```
+
+4. 查看日志：
+```bash
+docker-compose logs -f
+```
+
+5. 停止服务：
+```bash
+docker-compose down
+```
+
+### 3. 直接使用Docker部署
+
+如果您选择不使用Docker Compose，需要先创建一个Redis容器，然后再创建应用容器：
+
+1. 创建Docker网络：
+```bash
+docker network create pyreminder-network
+```
+
+2. 启动Redis容器：
+```bash
+docker run -d \
+  --name pyreminder-redis \
+  --network pyreminder-network \
+  -p 6379:6379 \
+  -v redis-data:/data \
+  redis:6-alpine \
+  redis-server --requirepass redispassword
+```
+
+3. 构建应用镜像：
+```bash
+docker build -t pyreminder .
+```
+
+4. 运行应用容器：
+```bash
+docker run -d \
+  -p 8000:8000 \
+  --name pyreminder \
+  --network pyreminder-network \
+  -e REDIS_HOST=pyreminder-redis \
+  -e REDIS_PORT=6379 \
+  -e REDIS_DB=0 \
+  -e REDIS_PASSWORD=redispassword \
+  -e REDIS_SSL=False \
+  --env-file .env \
+  pyreminder
+```
+
+5. 查看容器状态：
+```bash
+docker ps
+```
+
+6. 查看日志：
+```bash
+docker logs -f pyreminder
+```
+
+7. 停止服务：
+```bash
+docker stop pyreminder pyreminder-redis
+docker rm pyreminder pyreminder-redis
+```
+
+### 4. 数据持久化说明
+
+- Redis数据存储在名为`redis-data`的Docker卷中
+- 即使容器被删除，数据仍会保留
+- 如需备份数据，可以使用以下命令：
+```bash
+docker run --rm -v redis-data:/data -v $(pwd):/backup alpine tar -czf /backup/redis-backup.tar.gz /data
+```
+
 ## 配置选项
 
 ### Redis配置（.env文件）
