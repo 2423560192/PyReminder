@@ -294,45 +294,64 @@ def send_notification(task_title, task_content, task_time, token_name="默认"):
 
 # 检查任务线程
 def check_tasks():
+    """检查并触发到期任务的后台线程"""
+    global last_save_time
+    
+    # 安全检查，如果上一次保存时间未定义，则初始化
+    if 'last_save_time' not in globals():
+        last_save_time = time.time()
+    
     while True:
-        now = get_now()
-        triggered_tasks = []
-        
-        # 获取所有任务
-        current_tasks = get_all_tasks() if r else tasks
-        
-        # 检查是否有到期任务
-        for task in current_tasks:
-            # 确保任务时间有时区信息
-            task_datetime = task["datetime"]
-            if task_datetime.tzinfo is None:
-                # 为无时区任务添加时区
-                task_datetime = TZ.localize(task_datetime)
+        try:
+            now = get_now()
+            all_tasks = get_all_tasks() if r else tasks
             
-            if not task.get("triggered", False) and now >= task_datetime:
-                print(f"任务触发: {task['title']} (计划时间: {task_datetime}, 当前时间: {now})")
+            # 过滤出未触发且时间已到的任务
+            pending_tasks = [
+                task for task in all_tasks 
+                if not task.get("triggered", False) and task["datetime"] <= now
+            ]
+            
+            for task in pending_tasks:
+                print(f"触发任务提醒: {task['title']} (ID: {task['id']})")
+                
+                # 获取token名称，默认使用"默认"
+                token_name = task.get('token_name', '默认')
+                
+                # 发送息知通知
+                result = send_notification(
+                    task["title"], 
+                    task["content"], 
+                    task["datetime"].strftime("%Y-%m-%d %H:%M"),
+                    token_name
+                )
                 
                 # 更新任务状态
-                if r:
-                    update_task_status(task["id"], True)
-                else:
-                    task["triggered"] = True
-                
-                triggered_tasks.append(task)
-        
-        # 处理触发的任务
-        for task in triggered_tasks:
-            task_time = task["datetime"].strftime("%Y-%m-%d %H:%M")
-            print(f'发送提醒: {task["title"]} - {task_time}')
-            send_notification(
-                task_title=task["title"],
-                task_content=task.get("content", "无内容"),
-                task_time=task_time,
-                token_name=task.get("token_name", "默认")
-            )
-        
-        # 每秒检查一次
-        time.sleep(1)
+                if result:
+                    if r:
+                        update_task_status(task["id"])
+                    else:
+                        for t in tasks:
+                            if t["id"] == task["id"]:
+                                t["triggered"] = True
+                                break
+            
+            # 定期执行Redis SAVE命令（每60分钟）
+            current_time = time.time()
+            if r and (current_time - last_save_time) > 3600:  # 3600秒 = 1小时
+                try:
+                    r.save()
+                    print(f"已执行Redis SAVE命令，数据已保存到磁盘 ({time.strftime('%Y-%m-%d %H:%M:%S')})")
+                    last_save_time = current_time
+                except Exception as e:
+                    print(f"Redis SAVE命令执行失败: {str(e)}")
+            
+            # 每5秒检查一次
+            time.sleep(5)
+            
+        except Exception as e:
+            print(f"任务检查线程发生错误: {str(e)}")
+            time.sleep(5)  # 发生错误后等待5秒再继续
 
 # 启动检查线程
 check_thread = threading.Thread(target=check_tasks, daemon=True)

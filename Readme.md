@@ -167,12 +167,15 @@ docker-compose up -d --build
 
 3. 检查防火墙：
    ```bash
+   # Ubuntu/Debian
+   sudo ufw status
+   
    # CentOS
    sudo firewall-cmd --list-all
-   # 如需开放端口
-   sudo firewall-cmd --permanent --add-port=80/tcp
-   sudo firewall-cmd --reload
    ```
+
+4. Nginx容器重启问题：
+   如果Nginx容器不断重启，可能是SSL配置问题。使用`deploy-simple.sh`脚本进行HTTP-only部署。
 
 ### Redis连接问题
 
@@ -185,6 +188,49 @@ docker-compose up -d --build
    ```bash
    docker-compose exec redis redis-cli -a your_password ping
    ```
+
+### Redis数据持久化与备份
+
+为确保数据安全，系统配置了以下Redis持久化机制：
+
+1. **AOF持久化**：
+   - 启用了 AOF 持久化，系统会将每个写命令追加到 appendonly.aof 文件
+   - 配置了 `appendfsync everysec` 模式，每秒执行一次 fsync 操作
+
+2. **RDB快照**：
+   - 配置了自动保存规则：
+     - 900秒（15分钟）内至少1个键被修改时
+     - 300秒（5分钟）内至少10个键被修改时
+     - 60秒内至少10000个键被修改时
+
+3. **手动备份**：
+   系统提供了备份脚本，可以手动执行或设置定时任务：
+   ```bash
+   # 执行备份
+   ./backup_redis.sh
+   
+   # 查看备份文件
+   ls -l backups/
+   ```
+
+4. **数据恢复**：
+   如需从备份恢复数据，可使用恢复脚本：
+   ```bash
+   # 从备份文件恢复
+   ./restore_redis.sh backups/redis_backup_20230601_120000.rdb
+   ```
+
+5. **定时备份设置**（推荐）：
+   建议设置crontab定时任务实现自动备份：
+   ```bash
+   # 编辑crontab
+   crontab -e
+   
+   # 添加以下行（每天凌晨2点执行备份）
+   0 2 * * * cd /path/to/project && ./backup_redis.sh >> backups/backup.log 2>&1
+   ```
+
+**注意**：在服务器迁移或重新部署时，请确保备份Redis数据。
 
 ## 关于通知功能
 

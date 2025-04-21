@@ -18,7 +18,14 @@ services:
     restart: always
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_password}
+    command: >
+      redis-server 
+      --appendonly yes 
+      --appendfsync everysec 
+      --requirepass ${REDIS_PASSWORD:-redis_password}
+      --save 900 1 
+      --save 300 10 
+      --save 60 10000
     networks:
       - app-network
 
