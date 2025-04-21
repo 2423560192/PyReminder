@@ -57,6 +57,14 @@
                                     </select>
                                     <div class="form-text">选择接收通知的账号</div>
                                 </div>
+                                <div class="col-md-12">
+                                    <label for="recurrence" class="form-label">重复</label>
+                                    <select class="form-select" id="recurrence" name="recurrence">
+                                        <option value="">不重复</option>
+                                        <option value="daily">每天</option>
+                                    </select>
+                                    <div class="form-text">设置是否每天重复提醒</div>
+                                </div>
                                 <div class="col-12">
                                     <button type="submit" class="btn btn-primary w-100">添加提醒任务</button>
                                 </div>
@@ -86,7 +94,12 @@
                                             <tbody>
                                                 {% for task in tasks %}
                                                 <tr>
-                                                    <td>{{ task.title }}</td>
+                                                    <td>
+                                                        {{ task.title }}
+                                                        {% if task.recurrence == "daily" %}
+                                                            <span class="badge rounded-pill bg-info ms-2" title="每天重复">🔄</span>
+                                                        {% endif %}
+                                                    </td>
                                                     <td>{{ task.datetime|format_datetime }}</td>
                                                     <td>{{ task.token_name|default('默认') }}</td>
                                                     <td>

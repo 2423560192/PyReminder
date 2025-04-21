@@ -225,6 +225,51 @@ def update_task_status(task_id, triggered=True):
             return True
     return False
 
+# 重置周期性任务的状态并更新下次执行时间
+def reset_recurring_task(task_id):
+    if r:
+        task_json = r.hget(TASKS_KEY, str(task_id))
+        if task_json:
+            try:
+                task = json.loads(task_json)
+                
+                # 只处理周期性任务
+                if not task.get("recurrence"):
+                    return False
+                
+                # 获取当前任务的时间
+                current_dt = datetime.datetime.fromisoformat(task["datetime"])
+                
+                # 计算下一次执行时间
+                if task["recurrence"] == "daily":
+                    # 增加一天
+                    next_dt = current_dt + datetime.timedelta(days=1)
+                    # 保留原来的小时和分钟
+                    now = get_now()
+                    if next_dt < now:
+                        # 如果下次执行时间已经过去，设置为今天的相同时间
+                        next_dt = datetime.datetime(
+                            now.year, now.month, now.day,
+                            current_dt.hour, current_dt.minute,
+                            tzinfo=current_dt.tzinfo
+                        )
+                        # 如果更新后的时间仍然小于当前时间，再加一天
+                        if next_dt < now:
+                            next_dt = next_dt + datetime.timedelta(days=1)
+                    
+                    # 更新任务
+                    task["datetime"] = next_dt.isoformat()
+                    task["triggered"] = False
+                    
+                    # 保存回Redis
+                    r.hset(TASKS_KEY, str(task_id), json.dumps(task))
+                    print(f"已重置周期任务 ID:{task_id}，下次执行时间: {next_dt}")
+                    return True
+            except Exception as e:
+                print(f"重置周期任务错误: {str(e)}")
+        return False
+    return False
+
 # 内存存储模式的任务列表（仅当Redis不可用时使用）
 tasks = []
 
@@ -330,10 +375,33 @@ def check_tasks():
                 if result:
                     if r:
                         update_task_status(task["id"])
+                        
+                        # 如果是周期性任务，重置状态并设置下一次执行时间
+                        if task.get("recurrence"):
+                            reset_recurring_task(task["id"])
                     else:
                         for t in tasks:
                             if t["id"] == task["id"]:
                                 t["triggered"] = True
+                                # 内存模式下处理周期性任务
+                                if t.get("recurrence") == "daily":
+                                    # 计算下一次执行时间（加一天）
+                                    next_dt = t["datetime"] + datetime.timedelta(days=1)
+                                    if next_dt < now:
+                                        # 如果下次执行时间已经过去，设置为今天的相同时间
+                                        next_dt = datetime.datetime(
+                                            now.year, now.month, now.day,
+                                            t["datetime"].hour, t["datetime"].minute,
+                                            tzinfo=t["datetime"].tzinfo
+                                        )
+                                        # 如果更新后的时间仍然小于当前时间，再加一天
+                                        if next_dt < now:
+                                            next_dt = next_dt + datetime.timedelta(days=1)
+                                    
+                                    # 更新任务
+                                    t["datetime"] = next_dt
+                                    t["triggered"] = False
+                                    print(f"已重置内存中的周期任务 ID:{t['id']}，下次执行时间: {next_dt}")
                                 break
             
             # 定期执行Redis SAVE命令（每60分钟）
@@ -416,6 +484,7 @@ def add_task():
     reminder_date = request.form.get('date', '')
     reminder_time = request.form.get('time', '')
     token_name = request.form.get('token_name', '默认')
+    recurrence = request.form.get('recurrence', '')  # 获取重复选项
     
     if not reminder_date or not reminder_time:
         flash("日期和时间不能为空", "danger")
@@ -447,6 +516,11 @@ def add_task():
             "token_name": token_name,
             "triggered": False
         }
+        
+        # 添加周期性选项（如果有）
+        if recurrence:
+            task["recurrence"] = recurrence
+            print(f"设置周期任务: {recurrence}")
         
         # 存储任务
         if r:
