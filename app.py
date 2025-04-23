@@ -50,7 +50,7 @@ else:
     # 使用单独的环境变量
     redis_host = os.getenv('REDIS_HOST', 'localhost')
     redis_port = int(os.getenv('REDIS_PORT', 6379))
-    redis_db = 0  # Upstash只支持0号数据库
+    redis_db = 0
     redis_password = os.getenv('REDIS_PASSWORD')
     redis_ssl = os.getenv('REDIS_SSL', 'False').lower() in ['true', '1', 'yes']
 
