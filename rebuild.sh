@@ -1,16 +1,27 @@
 #!/bin/bash
 
-# Stop all containers
+echo "=== 开始重建PyReminder容器 ==="
+
+# 停止所有容器
+echo "停止容器..."
 docker-compose down
 
-# Remove all related containers, networks, volumes, and images
+# 删除相关容器、网络、卷和镜像
+echo "清理旧资源..."
 docker-compose rm -f -s -v
 
-# Clean Docker build cache
+# 清理Docker构建缓存
+echo "清理Docker缓存..."
 docker builder prune -f
 
-# Rebuild and start containers
+# 重新构建并启动容器
+echo "重新构建容器..."
 docker-compose build --no-cache
+
+echo "启动容器..."
 docker-compose up -d
 
-echo "Containers rebuilt successfully!" 
+echo "=== 容器重建完成 ==="
+echo "查看容器状态:"
+docker-compose ps
+echo "查看日志请运行: docker-compose logs -f" 
