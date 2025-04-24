@@ -3,43 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>时间提醒助手</title>
+    <title>准时宝</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 </head>
 <body>
     <div class="container mt-5">
         <div class="row">
-            <div class="col-lg-8 mx-auto">
-                <!-- Flash消息 -->
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                        {% for category, message in messages %}
-                            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                                {{ message }}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                            </div>
-                        {% endfor %}
-                    {% endif %}
-                {% endwith %}
-
+            <div class="col-md-8">
                 <div class="card shadow">
                     <div class="card-header bg-primary text-white">
-                        <h1 class="text-center mb-0">时间提醒助手</h1>
+                        <h3 class="mb-0">准时宝</h3>
                     </div>
                     <div class="card-body">
-                        <!-- 任务添加表单 -->
-                        <form id="taskForm" action="/add_task" method="post" class="mb-4">
-                            <div class="row g-3">
-                                <div class="col-md-12">
-                                    <label for="title" class="form-label">任务标题</label>
-                                    <input type="text" class="form-control" id="title" name="title" placeholder="请输入任务标题" required>
-                                </div>
-                                <div class="col-md-12">
-                                    <label for="content" class="form-label">任务内容</label>
-                                    <textarea class="form-control" id="content" name="content" rows="3" placeholder="请输入任务详细内容"></textarea>
-                                </div>
+                        <!-- 添加任务表单 -->
+                        <form action="{{ url_for('task.add_task') }}" method="post" class="mb-4">
+                            <div class="mb-3">
+                                <label for="title" class="form-label">任务名称</label>
+                                <input type="text" class="form-control" id="title" name="title" required placeholder="例如：会议提醒">
+                            </div>
+                            <div class="mb-3">
+                                <label for="content" class="form-label">任务内容</label>
+                                <textarea class="form-control" id="content" name="content" rows="3" placeholder="例如：与客户讨论项目进展"></textarea>
+                            </div>
+                            <div class="row mb-3">
                                 <div class="col-md-6">
                                     <label for="date" class="form-label">日期</label>
                                     <input type="date" class="form-control" id="date" name="date" required>
@@ -48,188 +35,155 @@
                                     <label for="time" class="form-label">时间</label>
                                     <input type="time" class="form-control" id="time" name="time" required>
                                 </div>
-                                <div class="col-md-12">
-                                    <label for="token_name" class="form-label">通知账号</label>
-                                    <select class="form-select" id="token_name" name="token_name">
-                                        {% for token_name in tokens %}
-                                            <option value="{{ token_name }}">{{ token_name }}</option>
-                                        {% endfor %}
-                                    </select>
-                                    <div class="form-text">选择接收通知的账号</div>
-                                </div>
-                                <div class="col-md-12">
-                                    <label for="recurrence" class="form-label">重复</label>
-                                    <select class="form-select" id="recurrence" name="recurrence">
-                                        <option value="">不重复</option>
-                                        <option value="daily">每天</option>
-                                    </select>
-                                    <div class="form-text">设置是否每天重复提醒</div>
-                                </div>
-                                <div class="col-12">
-                                    <button type="submit" class="btn btn-primary w-100">添加提醒任务</button>
+                            </div>
+                            <div class="mb-3">
+                                <label for="token_name" class="form-label">通知账号</label>
+                                <select class="form-select" id="token_name" name="token_name">
+                                    {% for name in tokens %}
+                                    <option value="{{ name }}">{{ name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="recurrence" class="form-label">重复</label>
+                                <select class="form-select" id="recurrence" name="recurrence">
+                                    <option value="">不重复（仅提醒一次）</option>
+                                    <option value="daily">每天</option>
+                                </select>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <button type="submit" class="btn btn-primary">添加任务</button>
+                                <div>
+                                    <a href="{{ url_for('token.manage_tokens') }}" class="btn btn-outline-secondary me-2">管理通知账号</a>
+                                    <a href="{{ url_for('system.system_info') }}" class="btn btn-outline-info">系统信息</a>
                                 </div>
                             </div>
                         </form>
-
-                        <hr>
-
-                        <!-- 任务列表 -->
-                        <div class="card">
-                            <div class="card-header bg-light">
-                                <h5 class="mb-0">任务列表</h5>
-                            </div>
-                            <div class="card-body" id="taskList">
-                                {% if tasks %}
-                                    <div class="table-responsive">
-                                        <table class="table table-hover">
-                                            <thead>
-                                                <tr>
-                                                    <th>任务标题</th>
-                                                    <th>提醒时间</th>
-                                                    <th>通知账号</th>
-                                                    <th>状态</th>
-                                                    <th>操作</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {% for task in tasks %}
-                                                <tr>
-                                                    <td>
-                                                        {{ task.title }}
-                                                        {% if task.recurrence == "daily" %}
-                                                            <span class="badge rounded-pill bg-info ms-2" title="每天重复">🔄</span>
-                                                        {% endif %}
-                                                    </td>
-                                                    <td>{{ task.datetime|format_datetime }}</td>
-                                                    <td>{{ task.token_name|default('默认') }}</td>
-                                                    <td>
-                                                        {% if task.triggered %}
-                                                            <span class="badge bg-success">已提醒</span>
-                                                        {% else %}
-                                                            <span class="badge bg-warning text-dark">等待中</span>
-                                                        {% endif %}
-                                                    </td>
-                                                    <td>
-                                                        <button type="button" class="btn btn-sm btn-danger" onclick="showDeleteConfirm({{ task.id }})">删除</button>
-                                                        <form id="deleteForm{{ task.id }}" action="{{ url_for('delete_task', task_id=task.id) }}" method="post" style="display: none;">
-                                                        </form>
-                                                    </td>
-                                                </tr>
-                                                {% endfor %}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                {% else %}
-                                    <p class="text-center text-muted">暂无任务，请添加一个新任务！</p>
-                                {% endif %}
-                            </div>
-                        </div>
                     </div>
+                </div>
 
-                    <div class="card-footer bg-light">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <small class="text-muted">
-                                    {% if redis_connected %}
-                                        <span class="text-success">✓ Redis已连接</span>
-                                    {% else %}
-                                        <span class="text-warning">⚠ 使用内存存储模式</span>
-                                    {% endif %}
-                                </small>
-                            </div>
-                            <div class="col-md-6 text-end">
-                                <small class="text-muted">可用通知账号：{{ tokens|length }}个</small>
-                                <a href="{{ url_for('manage_tokens') }}" class="ms-2 btn btn-sm btn-outline-primary">管理通知账号</a>
-                            </div>
+                <!-- 任务列表 -->
+                <div class="card mt-4 shadow">
+                    <div class="card-header bg-secondary text-white">
+                        <h4 class="mb-0">任务列表</h4>
+                    </div>
+                    <div class="card-body">
+                        {% if tasks %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>任务名称</th>
+                                        <th>提醒时间</th>
+                                        <th>通知账号</th>
+                                        <th>状态</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for task in tasks %}
+                                    <tr>
+                                        <td>{{ task.title }}</td>
+                                        <td>{{ task.datetime|format_datetime }}</td>
+                                        <td>{{ task.token_name }}</td>
+                                        <td>
+                                            {% if task.triggered %}
+                                            <span class="badge bg-success">已通知</span>
+                                            {% else %}
+                                            <span class="badge bg-warning text-dark">等待中</span>
+                                            {% endif %}
+                                            {% if task.recurrence %}
+                                            <span class="badge bg-info">每天</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <form action="{{ url_for('task.delete_task', task_id=task.id) }}" method="post" class="d-inline">
+                                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('确定要删除此任务吗？')">删除</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
                         </div>
+                        {% else %}
+                        <div class="alert alert-info">
+                            尚未添加任务，请使用上方表单添加任务。
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- 提醒弹窗 -->
-        <div class="toast-container position-fixed bottom-0 end-0 p-3">
-            <div id="reminderToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-                <div class="toast-header bg-warning">
-                    <strong class="me-auto">任务提醒</strong>
-                    <small id="toastTime"></small>
-                    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-                </div>
-                <div class="toast-body" id="toastMessage">
-                    任务时间到！
-                </div>
-            </div>
-        </div>
-        
-        <!-- 删除确认模态框 -->
-        <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header bg-danger text-white">
-                        <h5 class="modal-title" id="deleteConfirmModalLabel">确认删除</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <!-- 提示信息 -->
+            <div class="col-md-4">
+                <div class="card shadow">
+                    <div class="card-header bg-info text-white">
+                        <h4 class="mb-0">使用说明</h4>
                     </div>
-                    <div class="modal-body">
-                        <p>确定要删除这个任务吗？此操作无法撤销。</p>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                        <button type="button" class="btn btn-danger" id="confirmDeleteBtn">确认删除</button>
+                    <div class="card-body">
+                        <div class="alert alert-light">
+                            <h5>什么是准时宝？</h5>
+                            <p>准时宝是一个简单易用的任务提醒工具，可以在指定时间通过息知发送提醒通知。</p>
+                        </div>
+                        <div class="alert alert-light">
+                            <h5>如何添加任务？</h5>
+                            <ol>
+                                <li>填写任务名称和内容</li>
+                                <li>设置提醒日期和时间</li>
+                                <li>选择通知账号</li>
+                                <li>点击"添加任务"按钮</li>
+                            </ol>
+                        </div>
+                        <div class="alert {% if db_connected %}alert-success{% else %}alert-warning{% endif %}">
+                            <h5>数据存储状态</h5>
+                            {% if db_connected %}
+                            <p>MySQL数据库已连接，任务数据将安全保存。</p>
+                            {% else %}
+                            <p>注意：数据库连接失败，任务数据可能无法保存！</p>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
+
+                <!-- 通知消息 -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                <div class="mt-3">
+                    {% for category, message in messages %}
+                    <div class="toast show mb-3" role="alert" aria-live="assertive" aria-atomic="true">
+                        <div class="toast-header {% if category == 'success' %}bg-success text-white{% elif category == 'danger' %}bg-danger text-white{% else %}bg-warning{% endif %}">
+                            <strong class="me-auto">系统通知</strong>
+                            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+                        </div>
+                        <div class="toast-body">
+                            {{ message }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% endwith %}
             </div>
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // 设置默认日期为今天
+        // 自动设置日期为今天
         document.addEventListener('DOMContentLoaded', function() {
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('date').value = today;
+            const today = new Date();
+            const year = today.getFullYear();
+            let month = today.getMonth() + 1;
+            let day = today.getDate();
             
-            // 定时检查任务状态
-            setInterval(checkTasks, 5000);
+            // 格式化月和日，确保是两位数
+            month = month < 10 ? '0' + month : month;
+            day = day < 10 ? '0' + day : day;
+            
+            const formattedDate = `${year}-${month}-${day}`;
+            document.getElementById('date').value = formattedDate;
         });
-
-        // 显示删除确认模态框
-        function showDeleteConfirm(taskId) {
-            const modal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
-            const confirmBtn = document.getElementById('confirmDeleteBtn');
-            
-            // 设置确认按钮点击事件
-            confirmBtn.onclick = function() {
-                document.getElementById('deleteForm' + taskId).submit();
-            };
-            
-            modal.show();
-        }
-
-        // 检查任务状态
-        function checkTasks() {
-            fetch('/get_tasks')
-                .then(response => response.json())
-                .then(tasks => {
-                    // 检查是否有新触发的任务
-                    const now = new Date();
-                    tasks.forEach(task => {
-                        const taskTime = new Date(task.datetime);
-                        
-                        // 检查时间是否在过去5秒内触发
-                        const fiveSecondsAgo = new Date(now.getTime() - 5000);
-                        if (taskTime >= fiveSecondsAgo && taskTime <= now && task.triggered) {
-                            showToast(`您的任务「${task.title}」时间已到！`);
-                        }
-                    });
-                });
-        }
-
-        // 显示提醒弹窗
-        function showToast(message) {
-            const toast = new bootstrap.Toast(document.getElementById('reminderToast'));
-            document.getElementById('toastMessage').textContent = message;
-            document.getElementById('toastTime').textContent = new Date().toLocaleTimeString();
-            toast.show();
-        }
     </script>
 </body>
-</html> 
+</html>

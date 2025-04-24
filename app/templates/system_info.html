@@ -3,116 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>系统信息 - 时间提醒助手</title>
+    <title>系统信息 - 准时宝</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        .card {
-            margin-bottom: 20px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-        .card-header {
-            font-weight: bold;
-            background-color: #f8f9fa;
-        }
-        .system-badge {
-            font-size: 0.9em;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <div class="container my-5">
-        <h1 class="mb-4 text-center">系统信息</h1>
-        
-        <div class="card">
-            <div class="card-header">基本系统信息</div>
-            <div class="card-body">
-                <table class="table table-striped">
-                    <tbody>
-                        <tr>
-                            <td>当前时间</td>
-                            <td>{{ system_data.current_time }}</td>
-                        </tr>
-                        <tr>
-                            <td>系统启动时间</td>
-                            <td>{{ system_data.startup_time }}</td>
-                        </tr>
-                        <tr>
-                            <td>系统运行时间</td>
-                            <td>{{ system_data.uptime }}</td>
-                        </tr>
-                        <tr>
-                            <td>系统时区</td>
-                            <td>{{ system_data.timezone }}</td>
-                        </tr>
-                        <tr>
-                            <td>Python版本</td>
-                            <td>{{ system_data.python_version }}</td>
-                        </tr>
-                    </tbody>
-                </table>
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-lg-8 mx-auto">
+                <div class="card shadow mb-4">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <h1 class="mb-0 h3">系统信息</h1>
+                        <a href="{{ url_for('task.index') }}" class="btn btn-light btn-sm">返回主页</a>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <tbody>
+                                    <tr>
+                                        <th>当前时间:</th>
+                                        <td>{{ system_data.current_time }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>启动时间:</th>
+                                        <td>{{ system_data.startup_time }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>运行时长:</th>
+                                        <td>{{ system_data.uptime }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>系统时区:</th>
+                                        <td>{{ system_data.timezone }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Python版本:</th>
+                                        <td>{{ system_data.python_version }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>数据库状态:</th>
+                                        <td>
+                                            {% if system_data.db_connected %}
+                                            <span class="badge bg-success">已连接 ({{ system_data.db_type }})</span>
+                                            {% else %}
+                                            <span class="badge bg-danger">未连接</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>数据库信息:</th>
+                                        <td>{{ system_data.db_message }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>任务总数:</th>
+                                        <td>{{ system_data.total_tasks }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>通知账号数:</th>
+                                        <td>{{ system_data.total_tokens }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow">
+                    <div class="card-header bg-info text-white">
+                        <h4 class="mb-0">系统说明</h4>
+                    </div>
+                    <div class="card-body">
+                        <p>准时宝系统使用MySQL数据库存储您的任务数据和通知账号，确保数据持久化。</p>
+                        
+                        <div class="alert alert-light">
+                            <h5>应用架构</h5>
+                            <ul>
+                                <li>后端: Python Flask</li>
+                                <li>数据库: MySQL</li>
+                                <li>前端: Bootstrap 5</li>
+                                <li>消息推送: 息知API</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="alert alert-light">
+                            <h5>功能特点</h5>
+                            <ul>
+                                <li>任务提醒和管理</li>
+                                <li>通知账号管理</li>
+                                <li>周期性任务支持</li>
+                                <li>数据持久化存储</li>
+                            </ul>
+                        </div>
+                        
+                        {% if not system_data.db_connected %}
+                        <div class="alert alert-warning">
+                            <strong>数据库连接异常!</strong> 系统无法连接到MySQL数据库。请检查数据库配置和连接。
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
-        </div>
-
-        <div class="card">
-            <div class="card-header">数据存储状态</div>
-            <div class="card-body">
-                <table class="table table-striped">
-                    <tbody>
-                        <tr>
-                            <td>Redis连接状态</td>
-                            <td>
-                                {% if system_data.redis_connected %}
-                                <span class="badge bg-success system-badge">已连接</span>
-                                {% else %}
-                                <span class="badge bg-danger system-badge">未连接</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>Redis服务器</td>
-                            <td>{{ system_data.redis_host }}</td>
-                        </tr>
-                        <tr>
-                            <td>Redis端口</td>
-                            <td>{{ system_data.redis_port }}</td>
-                        </tr>
-                        <tr>
-                            <td>Redis SSL</td>
-                            <td>{{ system_data.redis_ssl }}</td>
-                        </tr>
-                        <tr>
-                            <td>总任务数量</td>
-                            <td>{{ system_data.total_tasks }}</td>
-                        </tr>
-                        <tr>
-                            <td>内存中任务数量</td>
-                            <td>{{ system_data.memory_tasks }}</td>
-                        </tr>
-                        <tr>
-                            <td>通知账号数量</td>
-                            <td>{{ system_data.total_tokens }}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="alert {% if system_data.redis_connected %}alert-success{% else %}alert-warning{% endif %} mt-4">
-            <h5 class="alert-heading">数据存储说明</h5>
-            {% if system_data.redis_connected %}
-            <p>系统当前使用Redis数据库存储任务信息，所有数据将持久化存储。</p>
-            {% else %}
-            <p><strong>注意：</strong> 系统当前使用内存存储任务信息，重启系统将导致任务数据丢失！</p>
-            <p>建议配置Redis数据库连接以启用持久化存储。</p>
-            {% endif %}
-        </div>
-
-        <div class="d-flex justify-content-center mt-4">
-            <a href="/" class="btn btn-primary me-2">返回首页</a>
-            <a href="{{ url_for('manage_tokens') }}" class="btn btn-secondary">管理通知账号</a>
         </div>
     </div>
-    
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html> 

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>通知账号管理 - 时间提醒助手</title>
+    <title>通知账号管理 - 准时宝</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
@@ -27,11 +27,11 @@
                 <div class="card shadow mb-4">
                     <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                         <h1 class="mb-0 h3">通知账号管理</h1>
-                        <a href="{{ url_for('index') }}" class="btn btn-light btn-sm">返回主页</a>
+                        <a href="{{ url_for('task.index') }}" class="btn btn-light btn-sm">返回主页</a>
                     </div>
                     <div class="card-body">
                         <!-- 添加新令牌表单 -->
-                        <form id="tokenForm" action="{{ url_for('add_token') }}" method="post" class="mb-4">
+                        <form id="tokenForm" action="{{ url_for('token.add_token_route') }}" method="post" class="mb-4">
                             <div class="row g-3">
                                 <div class="col-md-6">
                                     <label for="token_name" class="form-label">账号名称</label>
@@ -78,7 +78,7 @@
                                                     </td>
                                                     <td>
                                                         <button type="button" class="btn btn-sm btn-danger" onclick="showDeleteConfirm('{{ name }}')" {% if name == '默认' %}disabled{% endif %}>删除</button>
-                                                        <form id="deleteForm{{ name|replace(' ', '_') }}" action="{{ url_for('delete_token', token_name=name) }}" method="post" style="display: none;">
+                                                        <form id="deleteForm{{ name|replace(' ', '_') }}" action="{{ url_for('token.delete_token_route', token_name=name) }}" method="post" style="display: none;">
                                                         </form>
                                                     </td>
                                                 </tr>
