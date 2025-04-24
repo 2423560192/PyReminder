@@ -13,7 +13,7 @@ workers = multiprocessing.cpu_count() * 2 + 1
 threads = 2
 
 # 工作模式
-worker_class = "gevent"
+worker_class = "sync"
 
 # 最大请求数
 max_requests = 1000
