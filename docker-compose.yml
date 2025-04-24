@@ -1,52 +1,36 @@
-version: '3'
+version: '3.8'
 
 services:
   web:
-    build: .
-    restart: always
-    volumes:
-      - .:/app
-    env_file:
-      - .env
-    depends_on:
-      - redis
-    networks:
-      - app-network
-
-  redis:
-    image: redis:latest
-    restart: always
-    volumes:
-      - redis_data:/data
-    command: >
-      redis-server 
-      --appendonly yes 
-      --appendfsync everysec 
-      --requirepass ${REDIS_PASSWORD:-redis_password}
-      --save 900 1 
-      --save 300 10 
-      --save 60 10000
-    networks:
-      - app-network
-
-  nginx:
-    image: nginx:stable-alpine
-    restart: always
+    build: 
+      context: .
+      dockerfile: Dockerfile
     ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./config/nginx:/etc/nginx/conf.d
-      - ./logs/nginx:/var/log/nginx
-      - ./app/static:/app/static
+      - "5000:5000"
+    environment:
+      - FLASK_DEBUG=False
+      - MYSQL_HOST=db
+      - MYSQL_PORT=3306
+      - MYSQL_USER=zhunshi_user
+      - MYSQL_PASSWORD=zhunshi_password
+      - MYSQL_DATABASE=zhunshi_prod
     depends_on:
-      - web
-    networks:
-      - app-network
+      - db
+    restart: always
 
-networks:
-  app-network:
-    driver: bridge
+  db:
+    image: mysql:8.0
+    volumes:
+      - mysql_data_prod:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_password
+      - MYSQL_DATABASE=zhunshi_prod
+      - MYSQL_USER=zhunshi_user
+      - MYSQL_PASSWORD=zhunshi_password
+    ports:
+      - "3306:3306"
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    restart: always
 
 volumes:
-  redis_data: 
+  mysql_data_prod: 

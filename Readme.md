@@ -1,6 +1,105 @@
-# PyReminder - Web版准时宝
+# 准时宝 - 时间提醒助手
 
-PyReminder是一个基于Flask和HTML的Web版准时宝，可以帮助用户管理各种任务和提醒。用户可以添加任务、设置提醒时间，系统会在指定时间自动发送通知提醒。支持Redis持久化存储和多通知账号配置。
+一个简单易用的任务提醒工具，可以在指定时间通过息知发送提醒通知。
+
+## 功能特点
+
+- 任务提醒和管理
+- 通知账号管理
+- 周期性任务支持
+- 数据持久化存储
+
+## 技术栈
+
+- 后端: Python Flask
+- 数据库: MySQL
+- 前端: Bootstrap 5
+- 消息推送: 息知API
+
+## 本地开发环境
+
+### 方法一：直接运行
+
+1. 安装依赖
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. 创建MySQL数据库
+   ```sql
+   CREATE DATABASE zhunshi CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   ```
+
+3. 配置环境变量（创建.env文件或设置系统环境变量）
+   ```
+   FLASK_DEBUG=True
+   MYSQL_HOST=localhost
+   MYSQL_PORT=3306
+   MYSQL_USER=root
+   MYSQL_PASSWORD=your_password
+   MYSQL_DATABASE=zhunshi
+   ```
+
+4. 启动应用
+   ```bash
+   python wsgi.py
+   ```
+
+### 方法二：使用Docker（开发模式）
+
+1. 启动开发环境
+   ```bash
+   docker-compose -f docker-compose.dev.yml up -d
+   ```
+
+2. 查看日志
+   ```bash
+   docker-compose -f docker-compose.dev.yml logs -f web
+   ```
+
+3. 停止开发环境
+   ```bash
+   docker-compose -f docker-compose.dev.yml down
+   ```
+
+## 生产环境部署
+
+### 使用Docker Compose部署
+
+1. 修改环境变量（可选，否则使用docker-compose.yml中的默认值）
+   ```bash
+   cp .env.example .env
+   # 编辑.env文件，修改配置
+   ```
+
+2. 构建并启动容器
+   ```bash
+   docker-compose up -d --build
+   ```
+
+3. 查看日志
+   ```bash
+   docker-compose logs -f
+   ```
+
+4. 停止服务
+   ```bash
+   docker-compose down
+   ```
+
+### 数据持久化
+
+MySQL数据保存在Docker卷中，可以通过以下命令查看：
+
+```bash
+docker volume ls
+```
+
+## 重要提示
+
+- 在生产环境中，请确保修改默认的数据库密码和通知Token
+- 可以在docker-compose.yml中修改MySQL的端口映射，避免与本地MySQL冲突
+- 若需使用自己的域名和HTTPS，请配置反向代理，如Nginx
 
 ## 目录结构
 
