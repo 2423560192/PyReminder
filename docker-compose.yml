@@ -5,8 +5,8 @@ services:
     build: 
       context: .
       dockerfile: Dockerfile
-    ports:
-      - "5000:5000"
+    expose:
+      - "5000"
     environment:
       - FLASK_DEBUG=False
       - MYSQL_HOST=db
@@ -26,6 +26,18 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    restart: always
+
+  nginx:
+    image: nginx:1.26
+    ports:
+      - "80:80"
+    volumes:
+      - ./config/nginx:/etc/nginx/conf.d
+      - ./app/static:/app/static
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - web
     restart: always
 
   db:
@@ -50,4 +62,5 @@ services:
 
 volumes:
   mysql_data_prod:
-  app_logs: 
+  app_logs:
+  nginx_logs: 
