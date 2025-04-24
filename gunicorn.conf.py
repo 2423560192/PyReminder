@@ -1,30 +1,30 @@
-# Gunicorn配置文件
+# Gunicorn configuration file
 
 import os
 import multiprocessing
 
-# 绑定IP和端口
+# Bind IP and port
 bind = "0.0.0.0:5000"
 
-# 工作进程数
+# Worker processes
 workers = multiprocessing.cpu_count() * 2 + 1
 
-# 每个工作进程的线程数
+# Threads per worker
 threads = 2
 
-# 工作模式
+# Worker class
 worker_class = "sync"
 
-# 最大请求数
+# Maximum requests
 max_requests = 1000
 max_requests_jitter = 50
 
-# 超时设置
+# Timeout settings
 timeout = 60
 graceful_timeout = 30
 keepalive = 2
 
-# 日志设置
+# Log settings
 logdir = "/app/logs"
 os.makedirs(logdir, exist_ok=True)
 
@@ -32,16 +32,16 @@ accesslog = os.path.join(logdir, "access.log")
 errorlog = os.path.join(logdir, "error.log")
 loglevel = "info"
 
-# 守护进程设置
+# Daemon settings
 daemon = False
 
-# 进程名称
+# Process name
 proc_name = "pyreminder"
 
-# 清理环境
+# Cleanup environment
 preload_app = True
 
-# 保持环境变量
+# Environment variables
 raw_env = [
     "FLASK_APP=wsgi:app",
 ] 
