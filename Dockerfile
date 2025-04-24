@@ -11,6 +11,12 @@ ENV TZ=Asia/Shanghai
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# 创建日志目录
+RUN mkdir -p /app/logs/app && \
+    touch /app/logs/app/error.log && \
+    touch /app/logs/app/access.log && \
+    chmod -R 777 /app/logs
+
 # 复制应用代码
 COPY . .
 

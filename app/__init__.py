@@ -4,6 +4,7 @@ from app.controllers.task_controller import task_bp
 from app.controllers.token_controller import token_bp
 from app.controllers.system_controller import system_bp
 from app.config.database import init_db
+from app.config.logging import configure_logging
 from app.services.task_service import start_check_thread, init_app as init_task_service
 from app.services.token_service import load_tokens, init_app as init_token_service
 from app.services.database import init_app as init_db_service
@@ -27,6 +28,9 @@ def create_app(config_class=Config):
     # 加载配置
     app.config.from_object(config_class)
 
+    # 配置日志
+    configure_logging(app)
+    
     # 初始化MySQL数据库连接
     init_db(app)
     
@@ -51,5 +55,6 @@ def create_app(config_class=Config):
     start_check_thread()
 
     print("准时宝启动...")
+    app.logger.info("准时宝应用已初始化完成")
 
     return app

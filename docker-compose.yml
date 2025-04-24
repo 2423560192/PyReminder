@@ -14,6 +14,14 @@ services:
       - MYSQL_USER=zhunshi_user
       - MYSQL_PASSWORD=zhunshi_password
       - MYSQL_DATABASE=zhunshi_prod
+    volumes:
+      - app_logs:/app/logs
+    command: >
+      bash -c "mkdir -p /app/logs/app &&
+               touch /app/logs/app/error.log &&
+               touch /app/logs/app/access.log &&
+               chmod -R 777 /app/logs &&
+               gunicorn --config gunicorn.conf.py wsgi:app"
     depends_on:
       - db
     restart: always
@@ -33,4 +41,5 @@ services:
     restart: always
 
 volumes:
-  mysql_data_prod: 
+  mysql_data_prod:
+  app_logs: 
